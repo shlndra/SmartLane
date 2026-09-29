@@ -354,27 +354,42 @@
                         Select vehicle type first
                     </button>
                 </div>
+                <!-- 2. BIG LANE INSTRUCTION (Always visible after selecting vehicle) -->
+                <div class="hub-card" id="hub-lane-card" style="display:none;">
+                    <div id="hub-lane-instruction" style="text-align:center;padding:10px 0;">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
 
-                <!-- 2. Lane Alignment HUD Alert -->
+                <!-- 3. LIVE LANE TRAFFIC BARS (which lanes are busy) -->
+                <div class="hub-card" id="hub-traffic-card" style="display:none;">
+                    <h2>🚦 Live Lane Traffic</h2>
+                    <div id="hub-lane-bars" style="display:flex;flex-direction:column;gap:8px;">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- 4. Checkpoint Zone Alert (appears only when approaching) -->
                 <div class="hub-zone-alert" id="hub-zone-alert">
                     <h3>📡 CHECKPOINT APPROACHING (30-SECOND WINDOW)</h3>
                     <p style="font-size:0.85rem; color:#d4edda;">Move into designated lane to prevent congestion:</p>
-                    <div class="hub-lane-title" id="hub-lane-title">→ Lane 2 (Cars)</div>
+                    <div class="hub-lane-title" id="hub-lane-title">→ Lane 2 (Medium)</div>
                     <p id="hub-distance-hint" style="font-size:0.8rem; color:#b2dfdb;">Approaching zone</p>
                 </div>
 
-                <!-- 3. Driver Mini Radar Map -->
+                <!-- 5. Driver Mini Radar Map (secondary, collapsed by default on mobile) -->
                 <div class="hub-card">
-                    <h2>
-                        <span>🗺️ Road Radar</span>
-                        <span id="hub-radar-count" style="font-size:0.75rem; background:#0f1424; padding:3px 8px; border-radius:6px; color:#4caf50;">0 vehicles nearby</span>
+                    <h2 onclick="document.getElementById('hub-map').style.display = document.getElementById('hub-map').style.display === 'none' ? 'block' : 'none'; setTimeout(()=>{ if(hubMap) hubMap.invalidateSize(); }, 100);" style="cursor:pointer;">
+                        <span>🗺️ Road Radar Map</span>
+                        <span id="hub-radar-count" style="font-size:0.75rem; background:#0f1424; padding:3px 8px; border-radius:6px; color:#4caf50;">0 nearby</span>
+                        <span style="font-size:0.7rem;color:#888;margin-left:auto;">▼ tap to toggle</span>
                     </h2>
                     <div id="hub-map" class="hub-radar-map"></div>
                 </div>
 
-                <!-- 4. Lane Distribution Roster -->
+                <!-- 6. Lane Distribution Roster -->
                 <div class="hub-card">
-                    <h2>🚦 Lane Roster (All Drivers on Road)</h2>
+                    <h2>📋 All Drivers on Road</h2>
                     <div class="hub-roster-list" id="hub-roster-list">
                         <div style="color:#666;font-size:0.85rem;text-align:center;padding:12px 0;">Select your vehicle type and click Drive to view nearby vehicles</div>
                     </div>

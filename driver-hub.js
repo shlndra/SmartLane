@@ -150,6 +150,9 @@ function hubSelectType(type) {
     const btn = document.getElementById('hub-start-btn');
     btn.disabled = false;
     btn.textContent = `📡 Drive as ${info.emoji} ${info.label} → ${info.name}`;
+
+    // Show lane instruction immediately
+    showLaneInstruction(info);
 }
 
 function hubSelectCustom() {
@@ -374,6 +377,9 @@ function renderHubRoster() {
     const rosterEl = document.getElementById('hub-roster-list');
     if (!rosterEl) return;
 
+    // Keep traffic bars updated live
+    renderLaneTrafficBars();
+
     const countBadge = document.getElementById('hub-radar-count');
     if (countBadge) countBadge.textContent = `${hubOtherVehicles.size} vehicle(s) nearby`;
 
@@ -428,4 +434,132 @@ function hubHaversine(lat1, lng1, lat2, lng2) {
     const dLng = (lng2 - lng1) * Math.PI / 180;
     const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ============================================
+//  BIG LANE INSTRUCTION HUD
+// ============================================
+function showLaneInstruction(info) {
+    const card = document.getElementById('hub-lane-card');
+    const el = document.getElementById('hub-lane-instruction');
+    if (!card || !el) return;
+
+    card.style.display = 'block';
+
+    const laneColors = { 1: '#2e7d32', 2: '#1565c0', 3: '#e65100', 4: '#b71c1c' };
+    const laneColor = laneColors[info.lane] || '#1565c0';
+    const laneNames = { 1: 'LEFT LANE', 2: 'CENTER-LEFT LANE', 3: 'CENTER-RIGHT LANE', 4: 'RIGHT LANE' };
+    const posName = laneNames[info.lane] || 'LANE ' + info.lane;
+
+    el.innerHTML = `
+        <div style="font-size:0.8rem;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
+            Your Vehicle: ${info.emoji} ${info.label}
+        </div>
+        <div style="
+            font-size:2.2rem;
+            font-weight:900;
+            color:#fff;
+            background:${laneColor};
+            padding:18px 20px;
+            border-radius:14px;
+            margin:8px 0;
+            text-shadow:0 2px 8px rgba(0,0,0,0.4);
+            box-shadow:0 4px 20px ${laneColor}66;
+        ">
+            🛣️ DRIVE IN LANE ${info.lane}
+        </div>
+        <div style="font-size:1rem;color:#00d4ff;font-weight:700;margin-top:4px;">
+            ${posName} — ${info.name}
+        </div>
+        <div style="display:flex;justify-content:center;gap:8px;margin-top:12px;">
+            ${[1,2,3,4].map(n => `
+                <div style="
+                    width:50px;height:60px;
+                    background:${n === info.lane ? laneColor : '#1a1a2e'};
+                    border:2px solid ${n === info.lane ? '#fff' : '#333'};
+                    border-radius:6px;
+                    display:flex;flex-direction:column;align-items:center;justify-content:center;
+                    font-size:${n === info.lane ? '1.2rem' : '0.7rem'};
+                    color:${n === info.lane ? '#fff' : '#666'};
+                    font-weight:${n === info.lane ? '800' : '400'};
+                    ${n === info.lane ? 'box-shadow:0 0 12px ' + laneColor + '88;animation:lane-pulse 1.5s infinite;' : ''}
+                ">
+                    <span>L${n}</span>
+                    ${n === info.lane ? '<span style="font-size:0.6rem;margin-top:2px;">YOU</span>' : ''}
+                </div>
+            `).join('')}
+        </div>
+        <style>
+            @keyframes lane-pulse {
+                0%,100% { transform:scale(1); }
+                50% { transform:scale(1.08); }
+            }
+        </style>
+    `;
+
+    // Also show traffic bars
+    renderLaneTrafficBars();
+}
+
+// ============================================
+//  LIVE LANE TRAFFIC BARS
+// ============================================
+function renderLaneTrafficBars() {
+    const card = document.getElementById('hub-traffic-card');
+    const container = document.getElementById('hub-lane-bars');
+    if (!card || !container) return;
+
+    card.style.display = 'block';
+
+    // Count vehicles per lane
+    const laneCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+    // Count self
+    if (hubSharing && hubSelectedType) {
+        const myInfo = getVehicleLaneInfo(hubSelectedType);
+        laneCounts[myInfo.lane]++;
+    }
+
+    // Count others
+    hubOtherVehicles.forEach(entry => {
+        const vInfo = getVehicleLaneInfo(entry.data.type);
+        laneCounts[vInfo.lane]++;
+    });
+
+    const total = Object.values(laneCounts).reduce((a,b) => a+b, 0) || 1;
+
+    const laneLabels = {
+        1: { name: 'Lane 1 — Small', color: '#2e7d32', types: '🚲🛴🏍️🛵' },
+        2: { name: 'Lane 2 — Medium', color: '#1565c0', types: '🛺🔋🚗🚕🚙' },
+        3: { name: 'Lane 3 — Large', color: '#e65100', types: '🚐🚌🚑🛻' },
+        4: { name: 'Lane 4 — Heavy', color: '#b71c1c', types: '🚌🚛🚜🛢️' },
+    };
+
+    const myLane = hubSelectedType ? getVehicleLaneInfo(hubSelectedType).lane : 0;
+
+    container.innerHTML = Object.entries(laneLabels).map(([laneNum, lane]) => {
+        const count = laneCounts[laneNum];
+        const pct = Math.round((count / total) * 100);
+        const isMyLane = parseInt(laneNum) === myLane;
+
+        return `
+            <div style="
+                background:${isMyLane ? lane.color + '22' : '#0f1424'};
+                border:${isMyLane ? '2px solid ' + lane.color : '1px solid #1a2a4e'};
+                border-radius:8px;
+                padding:8px 12px;
+            ">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <span style="font-size:0.8rem;color:${isMyLane ? '#fff' : '#aaa'};font-weight:${isMyLane ? '700' : '400'};">
+                        ${isMyLane ? '→ ' : ''}${lane.name} ${isMyLane ? '(YOUR LANE)' : ''}
+                    </span>
+                    <span style="font-size:0.8rem;color:${lane.color};font-weight:700;">${count} vehicle${count !== 1 ? 's' : ''}</span>
+                </div>
+                <div style="background:#0a0a18;border-radius:4px;height:8px;overflow:hidden;">
+                    <div style="width:${pct || 2}%;height:100%;background:${lane.color};border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+                <div style="font-size:0.65rem;color:#666;margin-top:2px;">${lane.types}</div>
+            </div>
+        `;
+    }).join('');
 }
