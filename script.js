@@ -174,15 +174,55 @@ class Vehicle {
             stats.detected++;
         }
 
-        // Realistic lane change steering physics
+        // Realistic Anti-Overtake & Gap-Acceptance Lane Change
         if (this.detected && !this.sorted) {
-            const dx = this.targetX - this.x;
-            
-            // Turn indicator activation & banking rotation
-            if (Math.abs(dx) > 3) {
-                const steerSpeed = Math.min(Math.abs(dx) * 0.05, 2.8) * Math.sign(dx);
+            const laneWidth = this.roadWidth / 4;
+            const currentLane = Math.floor(this.x / laneWidth);
+            const targetLane = this.info.lane;
+
+            // Determine intermediate step (one lane at a time)
+            let stepLane = currentLane;
+            if (currentLane < targetLane) stepLane = currentLane + 1;
+            else if (currentLane > targetLane) stepLane = currentLane - 1;
+
+            const intermediateTargetX = stepLane * laneWidth + (laneWidth / 2) - 19;
+            const dx = intermediateTargetX - this.x;
+
+            // Gap Acceptance Check in the adjacent lane before moving:
+            // Check if there is another vehicle alongside or too close
+            let gapSafe = true;
+            let vehicleBlockingAhead = false;
+
+            for (let other of allVehicles) {
+                if (other.id !== this.id && !other.passed) {
+                    const otherLane = Math.floor(other.x / laneWidth);
+                    // Check if other vehicle is in the step lane
+                    if (otherLane === stepLane) {
+                        const distY = this.y - other.y; // positive: other is ahead, negative: other is behind
+                        
+                        // Blind-spot / alongside collision hazard (within 55px ahead or 50px behind)
+                        if (Math.abs(distY) < 55) {
+                            gapSafe = false;
+                            if (distY > 0) vehicleBlockingAhead = true;
+                        }
+                    }
+                }
+            }
+
+            // If unsafe gap, YIELD gently (slow down to let the blocking vehicle pass ahead, so we merge BEHIND them)
+            if (!gapSafe) {
+                if (vehicleBlockingAhead) {
+                    // Yield: gently brake so lead car pulls ahead, creating a safe gap behind it
+                    this.vy *= 0.85;
+                }
+                // Maintain current lane until clear gap is verified
+                this.rotation = 0;
+                this.element.classList.remove('indicating-left', 'indicating-right');
+            } else if (Math.abs(dx) > 3) {
+                // Safe gap confirmed: execute smooth lane shift without aggressive overtaking
+                const steerSpeed = Math.min(Math.abs(dx) * 0.04, 2.0) * Math.sign(dx);
                 this.x += steerSpeed;
-                this.rotation = steerSpeed * 4.5; // realistic steering angle
+                this.rotation = steerSpeed * 4.0; // realistic steering angle
                 
                 if (steerSpeed < 0) {
                     this.element.classList.add('indicating-left');
@@ -192,7 +232,7 @@ class Vehicle {
                     this.element.classList.remove('indicating-left');
                 }
             } else {
-                this.x = this.targetX;
+                this.x = intermediateTargetX;
                 this.rotation = 0;
                 this.element.classList.remove('indicating-left', 'indicating-right');
             }
@@ -203,7 +243,7 @@ class Vehicle {
             this.element.querySelector('.v-tag').textContent = this.eta + 's';
         }
 
-        // Fully sorted into designated lane
+        // Fully sorted into designated final lane
         if (!this.sorted && this.y <= this.sortedY + 20 && Math.abs(this.x - this.targetX) < 8) {
             this.sorted = true;
             this.rotation = 0;

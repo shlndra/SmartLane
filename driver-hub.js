@@ -488,6 +488,21 @@ function showLaneInstruction(info) {
                     ${n === info.lane ? '<span style="font-size:0.6rem;margin-top:2px;">YOU</span>' : ''}
                 </div>
             `).join('')}
+        <div style="
+            margin-top:14px;
+            padding:10px 14px;
+            background:#101726;
+            border-radius:8px;
+            border-left:4px solid #00d4ff;
+            text-align:left;
+            font-size:0.78rem;
+            color:#cbd5e1;
+            line-height:1.4;
+        ">
+            <strong style="color:#00d4ff;">🛡️ Safe Zipper-Merge Protocol (No Overtaking):</strong><br>
+            • Shift <strong>one lane at a time</strong> — do not sweep across multiple lanes.<br>
+            • If an adjacent vehicle is alongside, <strong>gently yield and merge behind</strong> it.<br>
+            • Always indicate early and maintain safe 2-second braking distance.
         </div>
         <style>
             @keyframes lane-pulse {
