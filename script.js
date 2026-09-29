@@ -20,6 +20,10 @@ function switchMode(mode) {
     if (mode === 'live' && typeof initLiveMode === 'function') {
         initLiveMode();
     }
+    // Initialize driver hub map on switch
+    if (mode === 'driver' && typeof initDriverHub === 'function') {
+        initDriverHub();
+    }
 }
 
 // ---- Clock ----

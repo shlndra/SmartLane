@@ -7,6 +7,7 @@
     <!-- Leaflet CSS for Live Mode Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="driver-hub.css">
 </head>
 <body>
 
@@ -25,7 +26,10 @@
                 🎮 Demo Mode
             </button>
             <button id="btn-live-mode" class="mode-btn" onclick="switchMode('live')">
-                📡 Live Road
+                📡 Live Traffic Map
+            </button>
+            <button id="btn-driver-mode" class="mode-btn" onclick="switchMode('driver')">
+                🚗 Driver View
             </button>
         </div>
 
@@ -248,6 +252,67 @@
         </aside>
     </main>
 
+    <!-- ======================== -->
+    <!--       DRIVER VIEW         -->
+    <!-- ======================== -->
+    <main id="driver-mode" class="main mode-content">
+        <section class="driver-hub-section">
+            <div class="driver-hub-container">
+
+                <!-- 1. Driver Setup Card -->
+                <div class="hub-card" id="hub-setup-card">
+                    <h2>🚗 Driver Identity & Vehicle Selection</h2>
+                    <input type="text" id="hub-driver-name" class="hub-input" placeholder="Your Name or Vehicle Registration No.">
+                    
+                    <div class="driver-type-grid">
+                        <button class="d-type-btn d-type-bike" onclick="hubSelectType('bike')" id="hub-btn-bike">
+                            <span style="font-size:1.4rem;">🏍️</span> Bike (Lane 1)
+                        </button>
+                        <button class="d-type-btn d-type-car" onclick="hubSelectType('car')" id="hub-btn-car">
+                            <span style="font-size:1.4rem;">🚗</span> Car (Lane 2)
+                        </button>
+                        <button class="d-type-btn d-type-van" onclick="hubSelectType('van')" id="hub-btn-van">
+                            <span style="font-size:1.4rem;">🚐</span> Van (Lane 3)
+                        </button>
+                        <button class="d-type-btn d-type-truck" onclick="hubSelectType('truck')" id="hub-btn-truck">
+                            <span style="font-size:1.4rem;">🚛</span> Truck (Lane 4)
+                        </button>
+                    </div>
+
+                    <button id="hub-start-btn" class="hub-start-btn" style="margin-top:12px;" onclick="hubToggleDriving()" disabled>
+                        Select vehicle type first
+                    </button>
+                </div>
+
+                <!-- 2. Lane Alignment HUD Alert -->
+                <div class="hub-zone-alert" id="hub-zone-alert">
+                    <h3>📡 CHECKPOINT APPROACHING (30-SECOND WINDOW)</h3>
+                    <p style="font-size:0.85rem; color:#d4edda;">Move into designated lane to prevent congestion:</p>
+                    <div class="hub-lane-title" id="hub-lane-title">→ Lane 2 (Cars)</div>
+                    <p id="hub-distance-hint" style="font-size:0.8rem; color:#b2dfdb;">Approaching zone</p>
+                </div>
+
+                <!-- 3. Driver Mini Radar Map -->
+                <div class="hub-card">
+                    <h2>
+                        <span>🗺️ Road Radar</span>
+                        <span id="hub-radar-count" style="font-size:0.75rem; background:#0f1424; padding:3px 8px; border-radius:6px; color:#4caf50;">0 vehicles nearby</span>
+                    </h2>
+                    <div id="hub-map" class="hub-radar-map"></div>
+                </div>
+
+                <!-- 4. Lane Distribution Roster -->
+                <div class="hub-card">
+                    <h2>🚦 Lane Roster (All Drivers on Road)</h2>
+                    <div class="hub-roster-list" id="hub-roster-list">
+                        <div style="color:#666;font-size:0.85rem;text-align:center;padding:12px 0;">Select your vehicle type and click Drive to view nearby vehicles</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
 </div>
 
 <!-- Firebase SDK (for Vercel deployment — real-time without WebSocket) -->
@@ -263,5 +328,6 @@
 
 <script src="script.js"></script>
 <script src="live.js"></script>
+<script src="driver-hub.js"></script>
 </body>
 </html>
