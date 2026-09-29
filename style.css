@@ -1,0 +1,617 @@
+/* ============================================
+   SmartLane — Style Sheet
+   ============================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* ---- App Layout ---- */
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* ---- Header ---- */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 24px;
+    background: #1a1a2e;
+    border-bottom: 2px solid #16213e;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    color: #00d4ff;
+    font-weight: 700;
+}
+
+.tagline {
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.live-badge {
+    color: #4caf50;
+    font-weight: 700;
+    font-size: 0.85rem;
+    animation: pulse-live 1.5s infinite;
+}
+
+@keyframes pulse-live {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.clock {
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    color: #00d4ff;
+    background: #16213e;
+    padding: 4px 12px;
+    border-radius: 6px;
+}
+
+/* ---- Mode Toggle ---- */
+.mode-toggle {
+    display: flex;
+    background: #0f0f1a;
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.mode-btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: #888;
+    background: transparent;
+}
+
+.mode-btn:hover {
+    color: #ccc;
+    background: #16213e;
+}
+
+.mode-btn.active {
+    background: #00d4ff;
+    color: #0f0f1a;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+}
+
+/* ---- Mode Content ---- */
+.mode-content {
+    display: none !important;
+}
+
+.mode-content.active {
+    display: flex !important;
+}
+
+/* ---- Main Layout ---- */
+.main {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ==============================
+   DEMO MODE STYLES
+   ============================== */
+
+/* ---- Road Section ---- */
+.road-section {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: #0f0f1a;
+}
+
+.road-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 600px;
+}
+
+.zone-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #4caf50;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+}
+
+.approach-label {
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 8px;
+    animation: bounce-up 1.5s infinite;
+}
+
+@keyframes bounce-up {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+/* Lane Headers */
+.lane-headers {
+    display: flex;
+    width: 100%;
+    border-radius: 10px 10px 0 0;
+    overflow: hidden;
+}
+
+.lane-header {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+}
+
+.bike-lane { background: #2e7d32; }
+.car-lane { background: #1565c0; }
+.van-lane { background: #e65100; }
+.truck-lane { background: #b71c1c; }
+
+/* ---- Road ---- */
+.road {
+    position: relative;
+    width: 100%;
+    height: 520px;
+    background: #2c2c2c;
+    border-left: 4px solid #ffd600;
+    border-right: 4px solid #ffd600;
+    overflow: hidden;
+}
+
+.lane-divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: repeating-linear-gradient(
+        to bottom,
+        #ffffff55 0px,
+        #ffffff55 20px,
+        transparent 20px,
+        transparent 40px
+    );
+}
+
+.sorted-zone {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30%;
+    background: linear-gradient(to bottom, rgba(76, 175, 80, 0.12), transparent);
+    border-bottom: 1px dashed rgba(76, 175, 80, 0.3);
+}
+
+.detection-line {
+    position: absolute;
+    top: 45%;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #00d4ff;
+    box-shadow: 0 0 15px #00d4ff88, 0 0 30px #00d4ff44;
+    z-index: 10;
+    animation: pulse-line 2s infinite;
+}
+
+@keyframes pulse-line {
+    0%, 100% { box-shadow: 0 0 15px #00d4ff88, 0 0 30px #00d4ff44; }
+    50% { box-shadow: 0 0 25px #00d4ffcc, 0 0 50px #00d4ff66; }
+}
+
+.detection-label {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #00d4ff;
+    white-space: nowrap;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px #00d4ff66;
+}
+
+/* ---- Vehicle ---- */
+.vehicle {
+    position: absolute;
+    width: 40px;
+    height: 52px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    z-index: 20;
+    transition: left 1.2s ease-in-out;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    cursor: default;
+}
+
+.vehicle .v-eta {
+    font-size: 0.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin-top: 1px;
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+}
+
+.vehicle.detected {
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.6), 0 2px 8px rgba(0, 0, 0, 0.5);
+    border: 2px solid #00d4ff;
+}
+
+.vehicle.sorted {
+    border: 2px solid #4caf50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.vehicle.type-bike { background: #2e7d32; }
+.vehicle.type-car { background: #1565c0; }
+.vehicle.type-van { background: #e65100; }
+.vehicle.type-truck { background: #b71c1c; }
+
+/* ==============================
+   LIVE MODE STYLES
+   ============================== */
+
+.map-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.gps-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    background: #16213e;
+    border-bottom: 1px solid #1a1a2e;
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.gps-status {
+    font-weight: 700;
+    color: #ffd600;
+}
+
+.gps-status.connected {
+    color: #4caf50;
+}
+
+.gps-status.error {
+    color: #ff5252;
+}
+
+.gps-coords {
+    font-family: 'Courier New', monospace;
+    color: #00d4ff;
+    background: #0f0f1a;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.gps-accuracy {
+    color: #888;
+    font-size: 0.75rem;
+}
+
+.map-container {
+    flex: 1;
+    min-height: 300px;
+    z-index: 1;
+}
+
+.map-instructions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: #16213e;
+    border-top: 1px solid #1a1a2e;
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.map-instructions strong {
+    color: #00d4ff;
+}
+
+/* Leaflet popup overrides for dark theme */
+.leaflet-popup-content-wrapper {
+    background: #1a1a2e !important;
+    color: #e0e0e0 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+}
+
+.leaflet-popup-tip {
+    background: #1a1a2e !important;
+}
+
+.leaflet-popup-content {
+    font-family: 'Segoe UI', sans-serif !important;
+    font-size: 0.85rem !important;
+}
+
+/* ==============================
+   SHARED — DASHBOARD
+   ============================== */
+
+.dashboard {
+    width: 300px;
+    background: #1a1a2e;
+    border-left: 2px solid #16213e;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.dash-card {
+    background: #16213e;
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.dash-card h3 {
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+    color: #00d4ff;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.stat {
+    text-align: center;
+    background: #1a1a2e;
+    padding: 10px 6px;
+    border-radius: 8px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.type-counts {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.type-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: #1a1a2e;
+    border-radius: 6px;
+}
+
+.type-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.bike-bg { background: #2e7d32; }
+.car-bg { background: #1565c0; }
+.van-bg { background: #e65100; }
+.truck-bg { background: #b71c1c; }
+
+.type-name {
+    flex: 1;
+    font-size: 0.85rem;
+}
+
+.type-count {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #fff;
+}
+
+.approaching-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.vehicle-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+}
+
+.vehicle-list::-webkit-scrollbar { width: 4px; }
+.vehicle-list::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+.empty-msg {
+    color: #555;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.vl-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: #1a1a2e;
+    border-radius: 6px;
+    border-left: 3px solid transparent;
+    font-size: 0.8rem;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.vl-item.detected { border-left-color: #00d4ff; }
+.vl-item .vl-emoji { font-size: 1rem; }
+.vl-item .vl-info { flex: 1; }
+.vl-item .vl-type { font-weight: 600; color: #e0e0e0; }
+.vl-item .vl-lane { font-size: 0.7rem; color: #888; }
+.vl-item .vl-eta {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #00d4ff;
+    font-family: 'Courier New', monospace;
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.control-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.control-row label {
+    font-size: 0.8rem;
+    color: #888;
+    min-width: 45px;
+}
+
+.control-row input[type="range"] {
+    flex: 1;
+    accent-color: #00d4ff;
+}
+
+#speed-label, #radius-label {
+    font-size: 0.8rem;
+    color: #00d4ff;
+    font-weight: 700;
+    min-width: 30px;
+}
+
+.control-hint {
+    font-size: 0.7rem;
+    color: #555;
+    margin-top: 4px;
+}
+
+.add-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #fff;
+}
+
+.btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+.btn:active { transform: scale(0.98); }
+
+.btn-primary { background: #00d4ff; color: #0f0f1a; }
+.btn-primary.active { background: #ff5252; color: #fff; }
+.btn-danger { background: #333; color: #ff5252; }
+.btn-add {
+    flex: 1;
+    padding: 6px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    color: #fff;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+    .main {
+        flex-direction: column;
+    }
+    .dashboard {
+        width: 100%;
+        border-left: none;
+        border-top: 2px solid #16213e;
+        max-height: 350px;
+    }
+    .road { height: 400px; }
+    .mode-toggle { order: 3; width: 100%; justify-content: center; }
+}

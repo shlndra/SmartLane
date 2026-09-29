@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartLane — GPS Vehicle Lane Alignment</title>
+    <!-- Leaflet CSS for Live Mode Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1>🚗 SmartLane</h1>
+            <span class="tagline">GPS-Based Vehicle Lane Alignment</span>
+        </div>
+
+        <!-- Mode Toggle -->
+        <div class="mode-toggle">
+            <button id="btn-demo-mode" class="mode-btn active" onclick="switchMode('demo')">
+                🎮 Demo Mode
+            </button>
+            <button id="btn-live-mode" class="mode-btn" onclick="switchMode('live')">
+                📡 Live Road
+            </button>
+        </div>
+
+        <div class="header-right">
+            <span class="live-badge">● LIVE</span>
+            <span id="clock" class="clock">00:00:00</span>
+        </div>
+    </header>
+
+    <!-- ======================== -->
+    <!--       DEMO MODE          -->
+    <!-- ======================== -->
+    <main id="demo-mode" class="main mode-content active">
+
+        <!-- Road Visualization -->
+        <section class="road-section">
+            <div class="road-container">
+                <div class="zone-label">✅ SORTED ZONE</div>
+                <div class="lane-headers">
+                    <div class="lane-header bike-lane">🏍️ Bikes</div>
+                    <div class="lane-header car-lane">🚗 Cars</div>
+                    <div class="lane-header van-lane">🚐 Vans</div>
+                    <div class="lane-header truck-lane">🚛 Trucks</div>
+                </div>
+                <div id="road" class="road">
+                    <div class="lane-divider" style="left: 25%"></div>
+                    <div class="lane-divider" style="left: 50%"></div>
+                    <div class="lane-divider" style="left: 75%"></div>
+                    <div class="sorted-zone"></div>
+                    <div class="detection-line">
+                        <span class="detection-label">📡 GPS DETECTION LINE — 30 SEC</span>
+                    </div>
+                </div>
+                <div class="approach-label">⬆️ Vehicles Approaching</div>
+            </div>
+        </section>
+
+        <!-- Demo Dashboard -->
+        <aside class="dashboard">
+            <div class="dash-card">
+                <h3>📊 Live Stats</h3>
+                <div class="stats-grid">
+                    <div class="stat">
+                        <span class="stat-value" id="stat-total">0</span>
+                        <span class="stat-label">Total</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="stat-detected">0</span>
+                        <span class="stat-label">Detected</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="stat-sorted">0</span>
+                        <span class="stat-label">Sorted</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="stat-passed">0</span>
+                        <span class="stat-label">Passed</span>
+                    </div>
+                </div>
+            </div>
+            <div class="dash-card">
+                <h3>🏷️ By Type</h3>
+                <div class="type-counts">
+                    <div class="type-row">
+                        <span class="type-icon bike-bg">🏍️</span>
+                        <span class="type-name">Bikes</span>
+                        <span class="type-count" id="count-bike">0</span>
+                    </div>
+                    <div class="type-row">
+                        <span class="type-icon car-bg">🚗</span>
+                        <span class="type-name">Cars</span>
+                        <span class="type-count" id="count-car">0</span>
+                    </div>
+                    <div class="type-row">
+                        <span class="type-icon van-bg">🚐</span>
+                        <span class="type-name">Vans</span>
+                        <span class="type-count" id="count-van">0</span>
+                    </div>
+                    <div class="type-row">
+                        <span class="type-icon truck-bg">🚛</span>
+                        <span class="type-name">Trucks</span>
+                        <span class="type-count" id="count-truck">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="dash-card approaching-card">
+                <h3>⏱️ Approaching Vehicles</h3>
+                <div id="vehicle-list" class="vehicle-list">
+                    <p class="empty-msg">No vehicles detected yet...</p>
+                </div>
+            </div>
+            <div class="dash-card">
+                <h3>🎮 Controls</h3>
+                <div class="controls">
+                    <div class="control-row">
+                        <button id="btn-auto" class="btn btn-primary" onclick="toggleAutoSpawn()">▶ Auto Spawn</button>
+                        <button id="btn-reset" class="btn btn-danger" onclick="resetSimulation()">⟲ Reset</button>
+                    </div>
+                    <div class="control-row">
+                        <label>Speed:</label>
+                        <input type="range" id="speed-slider" min="1" max="5" value="2" oninput="updateSpeed(this.value)">
+                        <span id="speed-label">2x</span>
+                    </div>
+                    <p class="control-hint">Or add manually:</p>
+                    <div class="control-row add-buttons">
+                        <button class="btn btn-add bike-bg" onclick="addVehicle('bike')">+ 🏍️</button>
+                        <button class="btn btn-add car-bg" onclick="addVehicle('car')">+ 🚗</button>
+                        <button class="btn btn-add van-bg" onclick="addVehicle('van')">+ 🚐</button>
+                        <button class="btn btn-add truck-bg" onclick="addVehicle('truck')">+ 🚛</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- ======================== -->
+    <!--       LIVE MODE           -->
+    <!-- ======================== -->
+    <main id="live-mode" class="main mode-content">
+
+        <!-- Map Section -->
+        <section class="map-section">
+            <!-- GPS Status Bar -->
+            <div class="gps-bar">
+                <span id="gps-status" class="gps-status">📡 Waiting for GPS...</span>
+                <span id="gps-coords" class="gps-coords">---, ---</span>
+                <span id="gps-accuracy" class="gps-accuracy">Accuracy: --</span>
+            </div>
+            <!-- Map Container -->
+            <div id="map" class="map-container"></div>
+            <!-- Map Instructions -->
+            <div class="map-instructions">
+                <span>📌 Click on map to place <strong>Zone/Checkpoint</strong></span>
+                <span>•</span>
+                <span>Blue circle = 30 sec detection radius</span>
+            </div>
+        </section>
+
+        <!-- Live Dashboard -->
+        <aside class="dashboard">
+            <div class="dash-card">
+                <h3>📊 Live Road Stats</h3>
+                <div class="stats-grid">
+                    <div class="stat">
+                        <span class="stat-value" id="live-stat-total">0</span>
+                        <span class="stat-label">Total</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="live-stat-detected">0</span>
+                        <span class="stat-label">In Range</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="live-stat-sorted">0</span>
+                        <span class="stat-label">Sorted</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="live-stat-passed">0</span>
+                        <span class="stat-label">Passed</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-card">
+                <h3>🏷️ By Type</h3>
+                <div class="type-counts">
+                    <div class="type-row">
+                        <span class="type-icon bike-bg">🏍️</span>
+                        <span class="type-name">Bikes</span>
+                        <span class="type-count" id="live-count-bike">0</span>
+                    </div>
+                    <div class="type-row">
+                        <span class="type-icon car-bg">🚗</span>
+                        <span class="type-name">Cars</span>
+                        <span class="type-count" id="live-count-car">0</span>
+                    </div>
+                    <div class="type-row">
+                        <span class="type-icon van-bg">🚐</span>
+                        <span class="type-name">Vans</span>
+                        <span class="type-count" id="live-count-van">0</span>
+                    </div>
+                    <div class="type-row">
+                        <span class="type-icon truck-bg">🚛</span>
+                        <span class="type-name">Trucks</span>
+                        <span class="type-count" id="live-count-truck">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-card approaching-card">
+                <h3>⏱️ Approaching Vehicles</h3>
+                <div id="live-vehicle-list" class="vehicle-list">
+                    <p class="empty-msg">Place a zone on the map to begin...</p>
+                </div>
+            </div>
+
+            <div class="dash-card">
+                <h3>📱 Connect Drivers</h3>
+                <div class="controls">
+                    <p class="control-hint" style="color:#00d4ff;font-size:0.8rem;">Share this link with drivers:</p>
+                    <div class="share-link-box" id="share-link-box" style="background:#0f0f1a;padding:10px;border-radius:8px;text-align:center;margin:6px 0;">
+                        <code id="driver-link" style="color:#4caf50;font-size:0.75rem;word-break:break-all;">Loading...</code>
+                    </div>
+                    <button class="btn btn-primary" style="width:100%" onclick="copyDriverLink()">📋 Copy Driver Link</button>
+                    <div class="control-row" style="margin-top:8px;">
+                        <span id="connected-count" style="font-size:0.8rem;color:#4caf50;">0 drivers connected</span>
+                    </div>
+                    <hr style="border-color:#333;margin:10px 0;">
+                    <div class="control-row">
+                        <button class="btn btn-danger" style="flex:1" onclick="liveRemoveZone()">✕ Remove Zone</button>
+                        <button class="btn" style="background:#16213e;flex:1;" onclick="liveCenterOnUser()">📍 My Location</button>
+                    </div>
+                    <p class="control-hint">Zone radius (detection range):</p>
+                    <div class="control-row">
+                        <label>Radius:</label>
+                        <input type="range" id="radius-slider" min="100" max="1000" value="500" step="50" oninput="liveUpdateRadius(this.value)">
+                        <span id="radius-label">500m</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+</div>
+
+<!-- Leaflet JS for Live Mode Map -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="script.js"></script>
+<script src="live.js"></script>
+</body>
+</html>

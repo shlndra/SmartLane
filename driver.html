@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SmartLane — Driver</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 16px;
+            background: #1a1a2e;
+            border-bottom: 2px solid #16213e;
+        }
+        .header h1 { font-size: 1.4rem; color: #00d4ff; }
+        .header p { font-size: 0.8rem; color: #888; margin-top: 4px; }
+
+        /* Connection Status */
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .status-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #ff5252;
+        }
+        .status-dot.connected { background: #4caf50; animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(76,175,80,0.5); }
+            50% { box-shadow: 0 0 0 8px rgba(76,175,80,0); }
+        }
+
+        /* Main Content */
+        .content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Step Card */
+        .step {
+            background: #16213e;
+            border-radius: 14px;
+            padding: 20px;
+        }
+        .step h2 {
+            font-size: 1rem;
+            color: #00d4ff;
+            margin-bottom: 12px;
+        }
+        .step.disabled { opacity: 0.4; pointer-events: none; }
+
+        /* Name Input */
+        .name-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f0f1a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+        }
+        .name-input:focus { border-color: #00d4ff; }
+
+        /* Vehicle Type Selection */
+        .type-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .type-btn {
+            padding: 16px;
+            border: 3px solid transparent;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .type-btn:active { transform: scale(0.95); }
+        .type-btn.selected { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0,212,255,0.3); }
+        .type-btn .emoji { font-size: 2rem; }
+
+        .type-bike { background: #2e7d32; }
+        .type-car { background: #1565c0; }
+        .type-van { background: #e65100; }
+        .type-truck { background: #b71c1c; }
+
+        /* Start Button */
+        .start-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #0f0f1a;
+            background: #00d4ff;
+        }
+        .start-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+        .start-btn:not(:disabled):active { transform: scale(0.98); }
+        .start-btn.sharing { background: #ff5252; color: #fff; }
+
+        /* GPS Info */
+        .gps-info {
+            background: #0f0f1a;
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+        }
+        .gps-info .coords {
+            font-family: 'Courier New', monospace;
+            color: #00d4ff;
+            font-size: 1rem;
+            margin: 6px 0;
+        }
+        .gps-info .meta {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        /* Zone Alert */
+        .zone-alert {
+            display: none;
+            background: #1b5e20;
+            border: 2px solid #4caf50;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+        .zone-alert.visible { display: block; animation: fadeIn 0.3s; }
+        .zone-alert h3 { color: #4caf50; margin-bottom: 6px; }
+        .zone-alert .lane-info {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 8px 0;
+        }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 12px;
+            font-size: 0.7rem;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🚗 SmartLane — Driver</h1>
+        <p>Share your location to align in the right lane</p>
+    </div>
+
+    <div class="status-bar">
+        <div id="status-dot" class="status-dot"></div>
+        <span id="status-text">Disconnected</span>
+    </div>
+
+    <div class="content">
+
+        <!-- Step 1: Name -->
+        <div class="step" id="step-name">
+            <h2>👤 Step 1: Your Name</h2>
+            <input type="text" id="driver-name" class="name-input" placeholder="Enter your name..." value="">
+        </div>
+
+        <!-- Step 2: Vehicle Type -->
+        <div class="step" id="step-type">
+            <h2>🚗 Step 2: Select Vehicle Type</h2>
+            <div class="type-grid">
+                <button class="type-btn type-bike" onclick="selectType('bike')" id="btn-bike">
+                    <span class="emoji">🏍️</span>
+                    Bike
+                </button>
+                <button class="type-btn type-car" onclick="selectType('car')" id="btn-car">
+                    <span class="emoji">🚗</span>
+                    Car
+                </button>
+                <button class="type-btn type-van" onclick="selectType('van')" id="btn-van">
+                    <span class="emoji">🚐</span>
+                    Van
+                </button>
+                <button class="type-btn type-truck" onclick="selectType('truck')" id="btn-truck">
+                    <span class="emoji">🚛</span>
+                    Truck
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: Start Sharing -->
+        <div class="step" id="step-start">
+            <h2>📡 Step 3: Share Location</h2>
+            <button id="start-btn" class="start-btn" onclick="toggleSharing()" disabled>
+                Select a vehicle type first
+            </button>
+        </div>
+
+        <!-- GPS Info (shown after sharing starts) -->
+        <div class="step" id="step-gps" style="display:none;">
+            <h2>📍 Your GPS</h2>
+            <div class="gps-info">
+                <div class="coords" id="driver-coords">---, ---</div>
+                <div class="meta">
+                    Speed: <span id="driver-speed">0</span> km/h &nbsp;|&nbsp;
+                    Accuracy: <span id="driver-accuracy">--</span>m
+                </div>
+                <div class="meta" style="margin-top:6px;">
+                    Updates sent: <span id="update-count">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zone Alert (shown when driver is in detection zone) -->
+        <div class="zone-alert" id="zone-alert">
+            <h3>📡 YOU ARE IN THE DETECTION ZONE</h3>
+            <p>Move to your assigned lane:</p>
+            <div class="lane-info" id="lane-assignment">→ Lane 2 (Cars)</div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        SmartLane — GPS Vehicle Lane Alignment System
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // ---- State ----
+        let socket = null;
+        let selectedType = null;
+        let sharing = false;
+        let gpsWatchId = null;
+        let updateCount = 0;
+        let currentZone = null; // { lat, lng, radius }
+
+        // ---- Socket Connection ----
+        function connectSocket() {
+            socket = io(window.location.origin, {
+                query: { role: 'driver' }
+            });
+
+            socket.on('connect', () => {
+                document.getElementById('status-dot').className = 'status-dot connected';
+                document.getElementById('status-text').textContent = 'Connected to SmartLane';
+            });
+
+            socket.on('disconnect', () => {
+                document.getElementById('status-dot').className = 'status-dot';
+                document.getElementById('status-text').textContent = 'Disconnected — reconnecting...';
+            });
+
+            socket.on('driver:registered', (data) => {
+                console.log('Registered as:', data.id);
+            });
+
+            // Receive zone updates from dashboard
+            socket.on('zone:update', (data) => {
+                currentZone = data;
+            });
+
+            socket.on('zone:removed', () => {
+                currentZone = null;
+                document.getElementById('zone-alert').classList.remove('visible');
+            });
+        }
+
+        connectSocket();
+
+        // ---- Vehicle Type Selection ----
+        function selectType(type) {
+            selectedType = type;
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('btn-' + type).classList.add('selected');
+
+            const btn = document.getElementById('start-btn');
+            btn.disabled = false;
+            btn.textContent = '📡 Start Sharing Location';
+        }
+
+        // ---- Toggle Sharing ----
+        function toggleSharing() {
+            if (!selectedType) return;
+
+            if (!sharing) {
+                startSharing();
+            } else {
+                stopSharing();
+            }
+        }
+
+        function startSharing() {
+            if (!navigator.geolocation) {
+                alert('GPS is not supported on this device!');
+                return;
+            }
+
+            const name = document.getElementById('driver-name').value.trim() || 'Driver';
+
+            // Register with server
+            socket.emit('driver:register', {
+                name: name,
+                type: selectedType
+            });
+
+            sharing = true;
+            updateCount = 0;
+
+            const btn = document.getElementById('start-btn');
+            btn.textContent = '⏹ Stop Sharing';
+            btn.classList.add('sharing');
+
+            // Disable type selection
+            document.getElementById('step-type').classList.add('disabled');
+            document.getElementById('step-name').classList.add('disabled');
+
+            // Show GPS info
+            document.getElementById('step-gps').style.display = 'block';
+
+            // Start GPS tracking
+            gpsWatchId = navigator.geolocation.watchPosition(
+                onGPSUpdate,
+                onGPSError,
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 2000,
+                    timeout: 10000
+                }
+            );
+        }
+
+        function stopSharing() {
+            sharing = false;
+
+            if (gpsWatchId !== null) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                gpsWatchId = null;
+            }
+
+            const btn = document.getElementById('start-btn');
+            btn.textContent = '📡 Start Sharing Location';
+            btn.classList.remove('sharing');
+
+            document.getElementById('step-type').classList.remove('disabled');
+            document.getElementById('step-name').classList.remove('disabled');
+            document.getElementById('zone-alert').classList.remove('visible');
+
+            // Disconnect and reconnect to clear registration
+            socket.disconnect();
+            setTimeout(() => connectSocket(), 500);
+        }
+
+        // ---- GPS Callbacks ----
+        function onGPSUpdate(pos) {
+            if (!sharing) return;
+
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const speed = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : 0; // m/s to km/h
+            const heading = pos.coords.heading || 0;
+            const accuracy = Math.round(pos.coords.accuracy);
+
+            // Send to server
+            socket.emit('driver:gps', {
+                lat: lat,
+                lng: lng,
+                speed: parseFloat(speed),
+                heading: heading
+            });
+
+            updateCount++;
+
+            // Update UI
+            document.getElementById('driver-coords').textContent =
+                `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            document.getElementById('driver-speed').textContent = speed;
+            document.getElementById('driver-accuracy').textContent = accuracy;
+            document.getElementById('update-count').textContent = updateCount;
+
+            // Check if in zone
+            checkZoneProximity(lat, lng);
+        }
+
+        function onGPSError(err) {
+            console.error('GPS Error:', err);
+            document.getElementById('driver-coords').textContent = 'GPS Error: ' + err.message;
+        }
+
+        // ---- Zone Proximity Check ----
+        function checkZoneProximity(lat, lng) {
+            if (!currentZone) {
+                document.getElementById('zone-alert').classList.remove('visible');
+                return;
+            }
+
+            const dist = haversineDistance(lat, lng, currentZone.lat, currentZone.lng);
+            const alertEl = document.getElementById('zone-alert');
+
+            if (dist <= currentZone.radius) {
+                alertEl.classList.add('visible');
+                const lanes = { bike: 'Lane 1 (Bikes)', car: 'Lane 2 (Cars)', van: 'Lane 3 (Vans)', truck: 'Lane 4 (Trucks)' };
+                document.getElementById('lane-assignment').textContent = '→ ' + (lanes[selectedType] || 'Unknown');
+            } else {
+                alertEl.classList.remove('visible');
+            }
+        }
+
+        function haversineDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 +
+                      Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+                      Math.sin(dLng/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+    </script>
+</body>
+</html>
