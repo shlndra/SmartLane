@@ -3,12 +3,64 @@
    Allows any user to drive & view other vehicles directly in the app
    ============================================ */
 
-const HUB_LANE_MAP = {
-    bike:  { lane: 1, name: 'Lane 1 (Bikes)',  color: '#2e7d32', emoji: '🏍️' },
-    car:   { lane: 2, name: 'Lane 2 (Cars)',   color: '#1565c0', emoji: '🚗' },
-    van:   { lane: 3, name: 'Lane 3 (Vans)',   color: '#e65100', emoji: '🚐' },
-    truck: { lane: 4, name: 'Lane 4 (Trucks)', color: '#b71c1c', emoji: '🚛' }
+// ---- SIZE CATEGORIES (for lane assignment) ----
+const LANE_CATEGORIES = {
+    small:  { lane: 1, name: 'Lane 1 (Small)',  color: '#2e7d32' },
+    medium: { lane: 2, name: 'Lane 2 (Medium)', color: '#1565c0' },
+    large:  { lane: 3, name: 'Lane 3 (Large)',  color: '#e65100' },
+    heavy:  { lane: 4, name: 'Lane 4 (Heavy)',  color: '#b71c1c' },
 };
+
+// ---- FULL INDIAN VEHICLE REGISTRY ----
+const VEHICLE_REGISTRY = {
+    // Small Vehicles (Lane 1)
+    cycle:      { emoji: '🚲', label: 'Bicycle',         category: 'small' },
+    escooter:   { emoji: '🛴', label: 'E-Scooter',       category: 'small' },
+    bike:       { emoji: '🏍️', label: 'Motorcycle',      category: 'small' },
+    scooty:     { emoji: '🛵', label: 'Scooty/Moped',    category: 'small' },
+
+    // Medium Vehicles (Lane 2)
+    auto:       { emoji: '🛺', label: 'Auto Rickshaw',   category: 'medium' },
+    erickshaw:  { emoji: '🔋', label: 'E-Rickshaw',      category: 'medium' },
+    car:        { emoji: '🚗', label: 'Car',             category: 'medium' },
+    taxi:       { emoji: '🚕', label: 'Taxi/Cab',        category: 'medium' },
+    suv:        { emoji: '🚙', label: 'SUV/Jeep',        category: 'medium' },
+
+    // Large Vehicles (Lane 3)
+    van:        { emoji: '🚐', label: 'Van/Tempo',       category: 'large' },
+    minibus:    { emoji: '🚌', label: 'Mini Bus',        category: 'large' },
+    ambulance:  { emoji: '🚑', label: 'Ambulance',       category: 'large' },
+    pickup:     { emoji: '🛻', label: 'Pickup Truck',    category: 'large' },
+
+    // Heavy Vehicles (Lane 4)
+    bus:        { emoji: '🚌', label: 'Bus',             category: 'heavy' },
+    truck:      { emoji: '🚛', label: 'Truck/Lorry',     category: 'heavy' },
+    tractor:    { emoji: '🚜', label: 'Tractor',         category: 'heavy' },
+    tanker:     { emoji: '🛢️', label: 'Tanker',          category: 'heavy' },
+    trailer:    { emoji: '🚛', label: 'Trailer/18-Wheeler', category: 'heavy' },
+};
+
+// Helper: get lane info for any vehicle type (including custom)
+function getVehicleLaneInfo(type) {
+    const reg = VEHICLE_REGISTRY[type];
+    if (reg) {
+        const cat = LANE_CATEGORIES[reg.category];
+        return { lane: cat.lane, name: cat.name, color: cat.color, emoji: reg.emoji, label: reg.label, category: reg.category };
+    }
+    // Custom vehicle — default to medium
+    const customCat = hubCustomCategory || 'medium';
+    const cat = LANE_CATEGORIES[customCat];
+    return { lane: cat.lane, name: cat.name, color: cat.color, emoji: '🚙', label: type, category: customCat };
+}
+
+// Backwards compat
+const HUB_LANE_MAP = new Proxy({}, {
+    get(target, key) {
+        return getVehicleLaneInfo(key);
+    }
+});
+
+let hubCustomCategory = 'medium';
 
 let hubMap = null;
 let hubMyMarker = null;
@@ -91,11 +143,49 @@ function setupHubRealtime() {
 function hubSelectType(type) {
     hubSelectedType = type;
     document.querySelectorAll('.d-type-btn').forEach(b => b.classList.remove('selected'));
-    document.getElementById('hub-btn-' + type).classList.add('selected');
+    const btnEl = document.getElementById('hub-btn-' + type);
+    if (btnEl) btnEl.classList.add('selected');
 
+    const info = getVehicleLaneInfo(type);
     const btn = document.getElementById('hub-start-btn');
     btn.disabled = false;
-    btn.textContent = `📡 Drive as ${HUB_LANE_MAP[type].emoji} ${type.toUpperCase()}`;
+    btn.textContent = `📡 Drive as ${info.emoji} ${info.label} → ${info.name}`;
+}
+
+function hubSelectCustom() {
+    const nameInput = document.getElementById('hub-custom-name');
+    const sizeSelect = document.getElementById('hub-custom-size');
+    const customName = nameInput.value.trim();
+
+    if (!customName) {
+        nameInput.style.borderColor = '#ff5252';
+        nameInput.placeholder = '⚠️ Enter your vehicle name first!';
+        setTimeout(() => { nameInput.style.borderColor = '#9c27b0'; nameInput.placeholder = 'e.g. JCB, Crane, Bullock Cart...'; }, 2000);
+        return;
+    }
+
+    // Register custom vehicle dynamically
+    const customKey = customName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    hubCustomCategory = sizeSelect.value;
+
+    VEHICLE_REGISTRY[customKey] = {
+        emoji: '🚙',
+        label: customName,
+        category: hubCustomCategory
+    };
+
+    // Clear all selections and highlight the custom
+    document.querySelectorAll('.d-type-btn').forEach(b => b.classList.remove('selected'));
+
+    hubSelectedType = customKey;
+    const info = getVehicleLaneInfo(customKey);
+    const btn = document.getElementById('hub-start-btn');
+    btn.disabled = false;
+    btn.textContent = `📡 Drive as 🚙 ${customName} → ${info.name}`;
+
+    nameInput.value = '';
+    nameInput.style.borderColor = '#4caf50';
+    setTimeout(() => { nameInput.style.borderColor = '#9c27b0'; }, 1500);
 }
 
 function hubToggleDriving() {

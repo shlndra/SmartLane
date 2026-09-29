@@ -24,12 +24,37 @@ let realVehicles = new Map();
 let liveStats = { total: 0, detected: 0, sorted: 0, passed: 0 };
 let liveTypeCounts = { bike: 0, car: 0, van: 0, truck: 0 };
 
-const LIVE_VEHICLE_TYPES = {
-    bike:  { emoji: '🏍️', label: 'Bike',  lane: 1, color: '#2e7d32' },
-    car:   { emoji: '🚗', label: 'Car',   lane: 2, color: '#1565c0' },
-    van:   { emoji: '🚐', label: 'Van',   lane: 3, color: '#e65100' },
-    truck: { emoji: '🚛', label: 'Truck', lane: 4, color: '#b71c1c' },
+const _LIVE_VEHICLE_TYPES = {
+    // Small
+    cycle:     { emoji: '🚲', label: 'Bicycle',     lane: 1, color: '#2e7d32' },
+    escooter:  { emoji: '🛴', label: 'E-Scooter',   lane: 1, color: '#2e7d32' },
+    bike:      { emoji: '🏍️', label: 'Motorcycle',  lane: 1, color: '#2e7d32' },
+    scooty:    { emoji: '🛵', label: 'Scooty',      lane: 1, color: '#2e7d32' },
+    // Medium
+    auto:      { emoji: '🛺', label: 'Auto',        lane: 2, color: '#1565c0' },
+    erickshaw: { emoji: '🔋', label: 'E-Rickshaw',  lane: 2, color: '#1565c0' },
+    car:       { emoji: '🚗', label: 'Car',         lane: 2, color: '#1565c0' },
+    taxi:      { emoji: '🚕', label: 'Taxi',        lane: 2, color: '#1565c0' },
+    suv:       { emoji: '🚙', label: 'SUV',         lane: 2, color: '#1565c0' },
+    // Large
+    van:       { emoji: '🚐', label: 'Van',         lane: 3, color: '#e65100' },
+    minibus:   { emoji: '🚌', label: 'Mini Bus',    lane: 3, color: '#e65100' },
+    ambulance: { emoji: '🚑', label: 'Ambulance',   lane: 3, color: '#e65100' },
+    pickup:    { emoji: '🛻', label: 'Pickup',      lane: 3, color: '#e65100' },
+    // Heavy
+    bus:       { emoji: '🚌', label: 'Bus',         lane: 4, color: '#b71c1c' },
+    truck:     { emoji: '🚛', label: 'Truck',       lane: 4, color: '#b71c1c' },
+    tractor:   { emoji: '🚜', label: 'Tractor',     lane: 4, color: '#b71c1c' },
+    tanker:    { emoji: '🛢️', label: 'Tanker',      lane: 4, color: '#b71c1c' },
+    trailer:   { emoji: '🚛', label: 'Trailer',     lane: 4, color: '#b71c1c' },
 };
+
+// Proxy so unknown/custom vehicle types get a sensible fallback
+const LIVE_VEHICLE_TYPES = new Proxy(_LIVE_VEHICLE_TYPES, {
+    get(target, key) {
+        return target[key] || { emoji: '🚙', label: key, lane: 2, color: '#1565c0' };
+    }
+});
 
 // ---- Map Vehicle Icons ----
 function createVehicleIcon(type, detected) {

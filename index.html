@@ -264,22 +264,93 @@
                     <h2>🚗 Driver Identity & Vehicle Selection</h2>
                     <input type="text" id="hub-driver-name" class="hub-input" placeholder="Your Name or Vehicle Registration No.">
                     
+                    <!-- SMALL VEHICLES -->
+                    <p style="color:#2e7d32;font-size:0.75rem;font-weight:700;margin:8px 0 4px;">🟢 SMALL — Lane 1</p>
                     <div class="driver-type-grid">
+                        <button class="d-type-btn d-type-bike" onclick="hubSelectType('cycle')" id="hub-btn-cycle">
+                            <span style="font-size:1.3rem;">🚲</span> Bicycle
+                        </button>
+                        <button class="d-type-btn d-type-bike" onclick="hubSelectType('escooter')" id="hub-btn-escooter">
+                            <span style="font-size:1.3rem;">🛴</span> E-Scooter
+                        </button>
                         <button class="d-type-btn d-type-bike" onclick="hubSelectType('bike')" id="hub-btn-bike">
-                            <span style="font-size:1.4rem;">🏍️</span> Bike (Lane 1)
+                            <span style="font-size:1.3rem;">🏍️</span> Motorcycle
                         </button>
-                        <button class="d-type-btn d-type-car" onclick="hubSelectType('car')" id="hub-btn-car">
-                            <span style="font-size:1.4rem;">🚗</span> Car (Lane 2)
-                        </button>
-                        <button class="d-type-btn d-type-van" onclick="hubSelectType('van')" id="hub-btn-van">
-                            <span style="font-size:1.4rem;">🚐</span> Van (Lane 3)
-                        </button>
-                        <button class="d-type-btn d-type-truck" onclick="hubSelectType('truck')" id="hub-btn-truck">
-                            <span style="font-size:1.4rem;">🚛</span> Truck (Lane 4)
+                        <button class="d-type-btn d-type-bike" onclick="hubSelectType('scooty')" id="hub-btn-scooty">
+                            <span style="font-size:1.3rem;">🛵</span> Scooty
                         </button>
                     </div>
 
-                    <button id="hub-start-btn" class="hub-start-btn" style="margin-top:12px;" onclick="hubToggleDriving()" disabled>
+                    <!-- MEDIUM VEHICLES -->
+                    <p style="color:#1565c0;font-size:0.75rem;font-weight:700;margin:10px 0 4px;">🔵 MEDIUM — Lane 2</p>
+                    <div class="driver-type-grid">
+                        <button class="d-type-btn d-type-car" onclick="hubSelectType('auto')" id="hub-btn-auto">
+                            <span style="font-size:1.3rem;">🛺</span> Auto
+                        </button>
+                        <button class="d-type-btn d-type-car" onclick="hubSelectType('erickshaw')" id="hub-btn-erickshaw">
+                            <span style="font-size:1.3rem;">🔋</span> E-Rickshaw
+                        </button>
+                        <button class="d-type-btn d-type-car" onclick="hubSelectType('car')" id="hub-btn-car">
+                            <span style="font-size:1.3rem;">🚗</span> Car
+                        </button>
+                        <button class="d-type-btn d-type-car" onclick="hubSelectType('taxi')" id="hub-btn-taxi">
+                            <span style="font-size:1.3rem;">🚕</span> Taxi/Cab
+                        </button>
+                        <button class="d-type-btn d-type-car" onclick="hubSelectType('suv')" id="hub-btn-suv">
+                            <span style="font-size:1.3rem;">🚙</span> SUV/Jeep
+                        </button>
+                    </div>
+
+                    <!-- LARGE VEHICLES -->
+                    <p style="color:#e65100;font-size:0.75rem;font-weight:700;margin:10px 0 4px;">🟠 LARGE — Lane 3</p>
+                    <div class="driver-type-grid">
+                        <button class="d-type-btn d-type-van" onclick="hubSelectType('van')" id="hub-btn-van">
+                            <span style="font-size:1.3rem;">🚐</span> Van/Tempo
+                        </button>
+                        <button class="d-type-btn d-type-van" onclick="hubSelectType('minibus')" id="hub-btn-minibus">
+                            <span style="font-size:1.3rem;">🚌</span> Mini Bus
+                        </button>
+                        <button class="d-type-btn d-type-van" onclick="hubSelectType('ambulance')" id="hub-btn-ambulance">
+                            <span style="font-size:1.3rem;">🚑</span> Ambulance
+                        </button>
+                        <button class="d-type-btn d-type-van" onclick="hubSelectType('pickup')" id="hub-btn-pickup">
+                            <span style="font-size:1.3rem;">🛻</span> Pickup
+                        </button>
+                    </div>
+
+                    <!-- HEAVY VEHICLES -->
+                    <p style="color:#b71c1c;font-size:0.75rem;font-weight:700;margin:10px 0 4px;">🔴 HEAVY — Lane 4</p>
+                    <div class="driver-type-grid">
+                        <button class="d-type-btn d-type-truck" onclick="hubSelectType('bus')" id="hub-btn-bus">
+                            <span style="font-size:1.3rem;">🚌</span> Bus
+                        </button>
+                        <button class="d-type-btn d-type-truck" onclick="hubSelectType('truck')" id="hub-btn-truck">
+                            <span style="font-size:1.3rem;">🚛</span> Truck
+                        </button>
+                        <button class="d-type-btn d-type-truck" onclick="hubSelectType('tractor')" id="hub-btn-tractor">
+                            <span style="font-size:1.3rem;">🚜</span> Tractor
+                        </button>
+                        <button class="d-type-btn d-type-truck" onclick="hubSelectType('tanker')" id="hub-btn-tanker">
+                            <span style="font-size:1.3rem;">🛢️</span> Tanker
+                        </button>
+                    </div>
+
+                    <!-- CUSTOM VEHICLE -->
+                    <p style="color:#9c27b0;font-size:0.75rem;font-weight:700;margin:12px 0 4px;">🟣 CUSTOM — Can't find your vehicle?</p>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <input type="text" id="hub-custom-name" class="hub-input" style="margin:0;flex:1;" placeholder="e.g. JCB, Crane, Bullock Cart...">
+                        <select id="hub-custom-size" style="padding:10px;border-radius:8px;background:#0f0f1a;color:#fff;border:2px solid #9c27b0;font-size:0.85rem;">
+                            <option value="small">Small</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="large">Large</option>
+                            <option value="heavy">Heavy</option>
+                        </select>
+                        <button class="d-type-btn" style="background:#9c27b0;padding:10px 14px;margin:0;border-radius:8px;" onclick="hubSelectCustom()">
+                            ➕ Add
+                        </button>
+                    </div>
+
+                    <button id="hub-start-btn" class="hub-start-btn" style="margin-top:14px;" onclick="hubToggleDriving()" disabled>
                         Select vehicle type first
                     </button>
                 </div>
