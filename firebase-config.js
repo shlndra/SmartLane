@@ -1,23 +1,14 @@
 /* ============================================
    SmartLane — Firebase Configuration
-   
-   HOW TO SET UP:
-   1. Go to https://console.firebase.google.com
-   2. Click "Create a project" → name it "SmartLane"
-   3. Go to "Build" → "Realtime Database" → "Create Database"
-   4. Select your region → Start in TEST MODE → Enable
-   5. Go to Project Settings (⚙️ gear icon) → "General" tab
-   6. Scroll down to "Your apps" → click Web icon (</>)
-   7. Register app name "SmartLane" → copy the config below
-   8. Replace the values below with YOUR config
    ============================================ */
 
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyCffehCFUH55XdNZHPV9zreLB4oJWMSI_U",
+    authDomain: "smartlane-b651a.firebaseapp.com",
+    databaseURL: "https://smartlane-b651a-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "smartlane-b651a",
+    storageBucket: "smartlane-b651a.firebasestorage.app",
+    messagingSenderId: "789788245139",
+    appId: "1:789788245139:web:e67c7696e546769e45a166",
+    measurementId: "G-9Y4LH17SM7"
 };
