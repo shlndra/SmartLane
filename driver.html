@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>SmartLane — Driver</title>
+    <title>SmartLane — Driver Navigation</title>
+    <!-- Leaflet CSS for Driver Mini-Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -18,21 +20,23 @@
 
         .header {
             text-align: center;
-            padding: 16px;
+            padding: 12px 16px;
             background: #1a1a2e;
             border-bottom: 2px solid #16213e;
+            position: relative;
         }
-        .header h1 { font-size: 1.4rem; color: #00d4ff; }
-        .header p { font-size: 0.8rem; color: #888; margin-top: 4px; }
+        .header h1 { font-size: 1.25rem; color: #00d4ff; font-weight: 700; }
+        .header p { font-size: 0.75rem; color: #888; margin-top: 2px; }
 
         .status-bar {
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 10px;
-            padding: 10px;
-            font-size: 0.85rem;
+            padding: 8px;
+            font-size: 0.8rem;
             font-weight: 700;
+            background: #131326;
         }
         .status-dot {
             width: 10px; height: 10px;
@@ -47,35 +51,35 @@
 
         .content {
             flex: 1;
-            padding: 20px;
+            padding: 14px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            max-width: 500px;
+            gap: 14px;
+            max-width: 600px;
             margin: 0 auto;
             width: 100%;
         }
 
         .step {
             background: #16213e;
-            border-radius: 14px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 16px;
         }
         .step h2 {
-            font-size: 1rem;
+            font-size: 0.95rem;
             color: #00d4ff;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
-        .step.disabled { opacity: 0.4; pointer-events: none; }
+        .step.disabled { opacity: 0.5; pointer-events: none; }
 
         .name-input {
             width: 100%;
-            padding: 12px 16px;
+            padding: 10px 14px;
             background: #0f0f1a;
             border: 2px solid #333;
-            border-radius: 10px;
+            border-radius: 8px;
             color: #fff;
-            font-size: 1rem;
+            font-size: 0.95rem;
             outline: none;
         }
         .name-input:focus { border-color: #00d4ff; }
@@ -83,25 +87,25 @@
         .type-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 8px;
         }
         .type-btn {
-            padding: 16px;
-            border: 3px solid transparent;
-            border-radius: 12px;
-            font-size: 1rem;
+            padding: 12px;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            font-size: 0.9rem;
             font-weight: 700;
             color: #fff;
             cursor: pointer;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            gap: 8px;
             transition: all 0.2s;
         }
-        .type-btn:active { transform: scale(0.95); }
-        .type-btn.selected { border-color: #00d4ff; box-shadow: 0 0 20px rgba(0,212,255,0.3); }
-        .type-btn .emoji { font-size: 2rem; }
+        .type-btn:active { transform: scale(0.96); }
+        .type-btn.selected { border-color: #00d4ff; box-shadow: 0 0 15px rgba(0,212,255,0.4); }
+        .type-btn .emoji { font-size: 1.5rem; }
 
         .type-bike { background: #2e7d32; }
         .type-car { background: #1565c0; }
@@ -110,10 +114,10 @@
 
         .start-btn {
             width: 100%;
-            padding: 16px;
+            padding: 14px;
             border: none;
-            border-radius: 12px;
-            font-size: 1.1rem;
+            border-radius: 10px;
+            font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
@@ -124,38 +128,107 @@
         .start-btn:not(:disabled):active { transform: scale(0.98); }
         .start-btn.sharing { background: #ff5252; color: #fff; }
 
-        .gps-info {
-            background: #0f0f1a;
-            border-radius: 10px;
-            padding: 14px;
-            text-align: center;
+        /* LIVE RADAR MAP */
+        .radar-card {
+            background: #16213e;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #1a2a4e;
         }
-        .gps-info .coords {
-            font-family: 'Courier New', monospace;
-            color: #00d4ff;
-            font-size: 1rem;
-            margin: 6px 0;
+        .radar-header {
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #141b30;
         }
-        .gps-info .meta { font-size: 0.75rem; color: #888; }
+        .radar-header h3 { font-size: 0.9rem; color: #00d4ff; display: flex; align-items: center; gap: 6px; }
+        .radar-count { font-size: 0.75rem; color: #4caf50; font-weight: 700; background: #0f1424; padding: 2px 8px; border-radius: 6px; }
 
+        #driver-map {
+            width: 100%;
+            height: 260px;
+            background: #111;
+            z-index: 1;
+        }
+
+        /* LANE HUD ALERT */
         .zone-alert {
             display: none;
-            background: #1b5e20;
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
             border: 2px solid #4caf50;
             border-radius: 12px;
             padding: 16px;
             text-align: center;
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: #4caf50; }
+            50% { border-color: #00d4ff; }
         }
         .zone-alert.visible { display: block; animation: fadeIn 0.3s; }
-        .zone-alert h3 { color: #4caf50; margin-bottom: 6px; }
+        .zone-alert h3 { color: #afffba; font-size: 0.95rem; margin-bottom: 4px; letter-spacing: 0.5px; }
         .zone-alert .lane-info {
-            font-size: 1.5rem; font-weight: 700; color: #fff; margin: 8px 0;
+            font-size: 1.6rem; font-weight: 800; color: #fff; margin: 8px 0;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
-        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        .zone-alert .lane-hint {
+            font-size: 0.8rem; color: #e0f2f1;
+        }
 
-        .footer {
-            text-align: center; padding: 12px; font-size: 0.7rem; color: #555;
+        /* NEARBY VEHICLES ROAD LIST */
+        .nearby-card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 14px;
         }
+        .nearby-card h3 { font-size: 0.9rem; color: #00d4ff; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .nearby-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        .nearby-empty {
+            color: #666; font-size: 0.8rem; text-align: center; padding: 12px 0;
+        }
+        .nearby-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: #0f0f1a;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            border-left: 4px solid #333;
+        }
+        .nearby-item.self { border-left-color: #00d4ff; background: #131a33; }
+        .nearby-item.lane-1 { border-left-color: #2e7d32; }
+        .nearby-item.lane-2 { border-left-color: #1565c0; }
+        .nearby-item.lane-3 { border-left-color: #e65100; }
+        .nearby-item.lane-4 { border-left-color: #b71c1c; }
+
+        .nearby-left { display: flex; align-items: center; gap: 8px; }
+        .nearby-emoji { font-size: 1.2rem; }
+        .nearby-name { font-weight: 600; color: #fff; }
+        .nearby-lane { font-size: 0.75rem; color: #00d4ff; }
+        .nearby-dist { font-family: 'Courier New', monospace; font-size: 0.8rem; color: #aaa; }
+
+        /* GPS Status info bar */
+        .gps-meta {
+            display: flex;
+            justify-content: space-around;
+            background: #0f0f1a;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: #888;
+        }
+        .gps-meta span strong { color: #00d4ff; }
 
         .mode-badge {
             display: inline-block;
@@ -167,13 +240,15 @@
         }
         .mode-badge.socket { background: #1565c0; color: #fff; }
         .mode-badge.firebase { background: #e65100; color: #fff; }
+
+        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>🚗 SmartLane — Driver</h1>
-        <p>Share your location to align in the right lane</p>
+        <h1>🚗 SmartLane — Driver View</h1>
+        <p>Live lane alignment & road traffic radar</p>
         <span id="mode-badge" class="mode-badge">Connecting...</span>
     </div>
 
@@ -183,69 +258,91 @@
     </div>
 
     <div class="content">
-        <div class="step" id="step-name">
-            <h2>👤 Step 1: Your Name</h2>
-            <input type="text" id="driver-name" class="name-input" placeholder="Enter your name...">
-        </div>
 
-        <div class="step" id="step-type">
-            <h2>🚗 Step 2: Select Vehicle Type</h2>
-            <div class="type-grid">
-                <button class="type-btn type-bike" onclick="selectType('bike')" id="btn-bike">
-                    <span class="emoji">🏍️</span> Bike
-                </button>
-                <button class="type-btn type-car" onclick="selectType('car')" id="btn-car">
-                    <span class="emoji">🚗</span> Car
-                </button>
-                <button class="type-btn type-van" onclick="selectType('van')" id="btn-van">
-                    <span class="emoji">🚐</span> Van
-                </button>
-                <button class="type-btn type-truck" onclick="selectType('truck')" id="btn-truck">
-                    <span class="emoji">🚛</span> Truck
+        <!-- Step 1 & 2: Registration -->
+        <div class="step" id="step-registration">
+            <h2>👤 Driver Setup</h2>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <input type="text" id="driver-name" class="name-input" placeholder="Your Name / Vehicle No.">
+                
+                <div class="type-grid">
+                    <button class="type-btn type-bike" onclick="selectType('bike')" id="btn-bike">
+                        <span class="emoji">🏍️</span> Bike (Lane 1)
+                    </button>
+                    <button class="type-btn type-car" onclick="selectType('car')" id="btn-car">
+                        <span class="emoji">🚗</span> Car (Lane 2)
+                    </button>
+                    <button class="type-btn type-van" onclick="selectType('van')" id="btn-van">
+                        <span class="emoji">🚐</span> Van (Lane 3)
+                    </button>
+                    <button class="type-btn type-truck" onclick="selectType('truck')" id="btn-truck">
+                        <span class="emoji">🚛</span> Truck (Lane 4)
+                    </button>
+                </div>
+
+                <button id="start-btn" class="start-btn" onclick="toggleSharing()" disabled>
+                    Select vehicle type first
                 </button>
             </div>
         </div>
 
-        <div class="step" id="step-start">
-            <h2>📡 Step 3: Share Location</h2>
-            <button id="start-btn" class="start-btn" onclick="toggleSharing()" disabled>
-                Select a vehicle type first
-            </button>
-        </div>
-
-        <div class="step" id="step-gps" style="display:none;">
-            <h2>📍 Your GPS</h2>
-            <div class="gps-info">
-                <div class="coords" id="driver-coords">---, ---</div>
-                <div class="meta">
-                    Speed: <span id="driver-speed">0</span> km/h &nbsp;|&nbsp;
-                    Accuracy: <span id="driver-accuracy">--</span>m
-                </div>
-                <div class="meta" style="margin-top:6px;">
-                    Updates sent: <span id="update-count">0</span>
-                </div>
-            </div>
-        </div>
-
+        <!-- ZONE INSTRUCTION BANNER (LANE ASSIGNMENT) -->
         <div class="zone-alert" id="zone-alert">
-            <h3>📡 YOU ARE IN THE DETECTION ZONE</h3>
-            <p>Move to your assigned lane:</p>
+            <h3>📡 APPROACHING CHECKPOINT (30 SEC ZONE)</h3>
+            <p class="lane-hint">Please shift to your matching designated lane:</p>
             <div class="lane-info" id="lane-assignment">→ Lane 2 (Cars)</div>
+            <p id="zone-distance-hint" style="font-size:0.75rem; opacity:0.9;">Distance to Checkpoint: 320m</p>
         </div>
+
+        <!-- LIVE RADAR MINI-MAP -->
+        <div class="radar-card" id="radar-container">
+            <div class="radar-header">
+                <h3>🗺️ Nearby Vehicles Radar</h3>
+                <span class="radar-count" id="radar-count">0 vehicles nearby</span>
+            </div>
+            <div id="driver-map"></div>
+        </div>
+
+        <!-- GPS TELEMETRY -->
+        <div class="gps-meta" id="gps-meta" style="display:none;">
+            <span>Speed: <strong id="driver-speed">0</strong> km/h</span>
+            <span>Accuracy: <strong id="driver-accuracy">--</strong>m</span>
+            <span>GPS Ping: <strong id="update-count">0</strong></span>
+        </div>
+
+        <!-- LIVE LANE ALIGNMENT ROSTER (WHAT OTHER DRIVERS ARE DOING) -->
+        <div class="nearby-card">
+            <h3>
+                <span>🚦 Lane Distribution</span>
+                <span style="font-size:0.7rem; color:#888;">Live Telemetry</span>
+            </h3>
+            <div class="nearby-list" id="nearby-list">
+                <div class="nearby-empty">Turn on location sharing to view nearby vehicles</div>
+            </div>
+        </div>
+
     </div>
 
-    <div class="footer">SmartLane — GPS Vehicle Lane Alignment System</div>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
 
-    <!-- Socket.io (local server, skipped on Vercel) -->
+    <!-- Socket.io -->
     <script src="/socket.io/socket.io.js" onerror="console.log('No Socket.io — using Firebase')"></script>
 
     <script>
-        // ---- State ----
+        const LANE_MAP = {
+            bike:  { lane: 1, name: 'Lane 1 (Bikes)',  color: '#2e7d32', emoji: '🏍️' },
+            car:   { lane: 2, name: 'Lane 2 (Cars)',   color: '#1565c0', emoji: '🚗' },
+            van:   { lane: 3, name: 'Lane 3 (Vans)',   color: '#e65100', emoji: '🚐' },
+            truck: { lane: 4, name: 'Lane 4 (Trucks)', color: '#b71c1c', emoji: '🚛' }
+        };
+
+        // State
         let socket = null;
         let firebaseDB = null;
         let driverMode = null; // 'socket' or 'firebase'
@@ -255,14 +352,63 @@
         let gpsWatchId = null;
         let updateCount = 0;
         let currentZone = null;
+        let myLat = null;
+        let myLng = null;
 
-        // ---- Detect & Connect ----
+        // Map and vehicle markers
+        let driverMap = null;
+        let myMarker = null;
+        let zoneCircle = null;
+        let otherVehicles = new Map(); // id -> { data, marker }
+
+        // ---- Map Icon Generator ----
+        function createDriverVehicleIcon(type, isSelf) {
+            const laneInfo = LANE_MAP[type] || LANE_MAP.car;
+            const size = isSelf ? 36 : 28;
+            const border = isSelf ? '3px solid #00d4ff' : '2px solid #fff';
+            const shadow = isSelf ? '0 0 14px #00d4ff' : '0 2px 6px rgba(0,0,0,0.5)';
+
+            return L.divIcon({
+                className: 'driver-vehicle-marker',
+                html: `<div style="
+                    background: ${laneInfo.color};
+                    width: ${size}px; height: ${size}px;
+                    border-radius: 50%;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: ${isSelf ? 18 : 14}px;
+                    border: ${border};
+                    box-shadow: ${shadow};
+                ">${laneInfo.emoji}</div>`,
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2]
+            });
+        }
+
+        // ---- Initialize Driver Map ----
+        function initDriverMap() {
+            if (driverMap) return;
+
+            driverMap = L.map('driver-map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([20.5937, 78.9629], 16);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19
+            }).addTo(driverMap);
+
+            driverMap.getPane('tilePane').style.filter = 'invert(1) hue-rotate(180deg) brightness(0.8) contrast(1.2)';
+            setTimeout(() => driverMap.invalidateSize(), 300);
+        }
+
+        // ---- Detect Connection Backend ----
         function initDriver() {
+            initDriverMap();
             const badge = document.getElementById('mode-badge');
 
             if (typeof io !== 'undefined') {
                 driverMode = 'socket';
-                badge.textContent = '🔌 Local Server';
+                badge.textContent = '🔌 Local WebSocket';
                 badge.className = 'mode-badge socket';
                 connectDriverSocket();
             } else if (typeof firebase !== 'undefined' && typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== 'YOUR_API_KEY') {
@@ -271,63 +417,86 @@
                 badge.className = 'mode-badge firebase';
                 connectDriverFirebase();
             } else {
-                badge.textContent = '⚠️ Not configured';
-                document.getElementById('status-text').textContent = 'Server not available';
+                badge.textContent = '⚠️ Not connected';
+                document.getElementById('status-text').textContent = 'Backend unavailable';
             }
         }
 
-        // ---- Socket.io Mode ----
+        // ---- Socket.io Connection ----
         function connectDriverSocket() {
             socket = io(window.location.origin, { query: { role: 'driver' } });
 
             socket.on('connect', () => {
                 document.getElementById('status-dot').className = 'status-dot connected';
-                document.getElementById('status-text').textContent = 'Connected to SmartLane';
+                document.getElementById('status-text').textContent = 'Live Radar Connected';
             });
 
             socket.on('disconnect', () => {
                 document.getElementById('status-dot').className = 'status-dot';
-                document.getElementById('status-text').textContent = 'Disconnected — reconnecting...';
+                document.getElementById('status-text').textContent = 'Reconnecting...';
             });
 
             socket.on('driver:registered', (data) => {
                 driverId = data.id;
             });
 
-            socket.on('zone:update', (data) => { currentZone = data; });
-            socket.on('zone:removed', () => {
-                currentZone = null;
-                document.getElementById('zone-alert').classList.remove('visible');
+            // Receive zone configuration from controller
+            socket.on('zone:update', (data) => updateZoneHUD(data));
+            socket.on('zone:removed', () => clearZoneHUD());
+
+            // Receive other vehicles live
+            socket.on('vehicles:all', (vehicles) => {
+                vehicles.forEach(v => {
+                    if (v.id !== driverId) updateOtherVehicle(v.id, v);
+                });
+            });
+
+            socket.on('vehicle:update', (v) => {
+                if (v.id !== driverId) updateOtherVehicle(v.id, v);
+            });
+
+            socket.on('vehicle:left', (data) => {
+                removeOtherVehicle(data.id);
             });
         }
 
-        // ---- Firebase Mode ----
+        // ---- Firebase Connection ----
         function connectDriverFirebase() {
             firebase.initializeApp(firebaseConfig);
             firebaseDB = firebase.database();
 
-            // Generate unique driver ID
-            driverId = 'driver_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+            driverId = 'driver_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
 
             document.getElementById('status-dot').className = 'status-dot connected';
-            document.getElementById('status-text').textContent = 'Connected via Firebase';
+            document.getElementById('status-text').textContent = 'Live Radar Connected';
 
-            // Listen for zone updates
+            // Watch for Zone setup
             firebaseDB.ref('zone').on('value', (snap) => {
                 const data = snap.val();
-                if (data && data.lat) {
-                    currentZone = data;
-                } else {
-                    currentZone = null;
-                    document.getElementById('zone-alert').classList.remove('visible');
-                }
+                if (data && data.lat) updateZoneHUD(data);
+                else clearZoneHUD();
             });
 
-            // Remove driver data when they disconnect/close tab
+            // Watch ALL vehicles on the road
+            const vehiclesRef = firebaseDB.ref('vehicles');
+
+            vehiclesRef.on('child_added', (snap) => {
+                if (snap.key !== driverId) updateOtherVehicle(snap.key, snap.val());
+            });
+
+            vehiclesRef.on('child_changed', (snap) => {
+                if (snap.key !== driverId) updateOtherVehicle(snap.key, snap.val());
+            });
+
+            vehiclesRef.on('child_removed', (snap) => {
+                removeOtherVehicle(snap.key);
+            });
+
+            // Clean up upon leaving
             firebaseDB.ref('vehicles/' + driverId).onDisconnect().remove();
         }
 
-        // ---- Vehicle Type Selection ----
+        // ---- Select Vehicle Type ----
         function selectType(type) {
             selectedType = type;
             document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
@@ -335,10 +504,10 @@
 
             const btn = document.getElementById('start-btn');
             btn.disabled = false;
-            btn.textContent = '📡 Start Sharing Location';
+            btn.textContent = `📡 Start Driving as ${LANE_MAP[type].emoji} ${type.toUpperCase()}`;
         }
 
-        // ---- Toggle Sharing ----
+        // ---- Toggle Location Sharing ----
         function toggleSharing() {
             if (!selectedType) return;
             if (!sharing) startSharing();
@@ -347,13 +516,12 @@
 
         function startSharing() {
             if (!navigator.geolocation) {
-                alert('GPS is not supported on this device!');
+                alert('GPS geolocation is not supported on this device');
                 return;
             }
 
-            const name = document.getElementById('driver-name').value.trim() || 'Driver';
+            const name = document.getElementById('driver-name').value.trim() || 'Driver ' + Math.floor(Math.random() * 900 + 100);
 
-            // Register with backend
             if (driverMode === 'socket') {
                 socket.emit('driver:register', { name, type: selectedType });
             } else if (driverMode === 'firebase') {
@@ -370,12 +538,11 @@
             updateCount = 0;
 
             const btn = document.getElementById('start-btn');
-            btn.textContent = '⏹ Stop Sharing';
+            btn.textContent = '⏹ Stop Driving & Leave Road';
             btn.classList.add('sharing');
 
-            document.getElementById('step-type').classList.add('disabled');
-            document.getElementById('step-name').classList.add('disabled');
-            document.getElementById('step-gps').style.display = 'block';
+            document.getElementById('step-registration').classList.add('disabled');
+            document.getElementById('gps-meta').style.display = 'flex';
 
             gpsWatchId = navigator.geolocation.watchPosition(
                 onGPSUpdate, onGPSError,
@@ -385,13 +552,16 @@
 
         function stopSharing() {
             sharing = false;
-
             if (gpsWatchId !== null) {
                 navigator.geolocation.clearWatch(gpsWatchId);
                 gpsWatchId = null;
             }
 
-            // Remove from backend
+            if (myMarker && driverMap.hasLayer(myMarker)) {
+                driverMap.removeLayer(myMarker);
+                myMarker = null;
+            }
+
             if (driverMode === 'firebase' && firebaseDB) {
                 firebaseDB.ref('vehicles/' + driverId).remove();
             } else if (driverMode === 'socket') {
@@ -400,31 +570,33 @@
             }
 
             const btn = document.getElementById('start-btn');
-            btn.textContent = '📡 Start Sharing Location';
+            btn.textContent = `📡 Start Driving as ${LANE_MAP[selectedType].emoji} ${selectedType.toUpperCase()}`;
             btn.classList.remove('sharing');
 
-            document.getElementById('step-type').classList.remove('disabled');
-            document.getElementById('step-name').classList.remove('disabled');
+            document.getElementById('step-registration').classList.remove('disabled');
             document.getElementById('zone-alert').classList.remove('visible');
+            document.getElementById('gps-meta').style.display = 'none';
+
+            renderNearbyList();
         }
 
-        // ---- GPS Callbacks ----
+        // ---- Handle GPS Updates ----
         function onGPSUpdate(pos) {
             if (!sharing) return;
 
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
+            myLat = pos.coords.latitude;
+            myLng = pos.coords.longitude;
             const speed = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : 0;
             const heading = pos.coords.heading || 0;
             const accuracy = Math.round(pos.coords.accuracy);
 
-            // Send to backend
+            // Broadcast GPS
             if (driverMode === 'socket') {
-                socket.emit('driver:gps', { lat, lng, speed: parseFloat(speed), heading });
+                socket.emit('driver:gps', { lat: myLat, lng: myLng, speed: parseFloat(speed), heading });
             } else if (driverMode === 'firebase') {
                 firebaseDB.ref('vehicles/' + driverId).update({
-                    lat: lat,
-                    lng: lng,
+                    lat: myLat,
+                    lng: myLng,
                     speed: parseFloat(speed),
                     heading: heading,
                     timestamp: Date.now()
@@ -432,17 +604,55 @@
             }
 
             updateCount++;
-
-            document.getElementById('driver-coords').textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
             document.getElementById('driver-speed').textContent = speed;
             document.getElementById('driver-accuracy').textContent = accuracy;
             document.getElementById('update-count').textContent = updateCount;
 
-            checkZoneProximity(lat, lng);
+            // Update user position on mini-radar
+            if (driverMap) {
+                if (!myMarker) {
+                    myMarker = L.marker([myLat, myLng], {
+                        icon: createDriverVehicleIcon(selectedType, true),
+                        zIndexOffset: 1000
+                    }).addTo(driverMap).bindPopup('🚗 You are here');
+                    driverMap.setView([myLat, myLng], 17);
+                } else {
+                    myMarker.setLatLng([myLat, myLng]);
+                }
+            }
+
+            checkZoneProximity(myLat, myLng);
+            renderNearbyList();
         }
 
         function onGPSError(err) {
-            document.getElementById('driver-coords').textContent = 'GPS Error: ' + err.message;
+            console.error('GPS error:', err);
+        }
+
+        // ---- Zone Management on Driver Screen ----
+        function updateZoneHUD(zone) {
+            currentZone = zone;
+            if (driverMap) {
+                if (zoneCircle) driverMap.removeLayer(zoneCircle);
+                zoneCircle = L.circle([zone.lat, zone.lng], {
+                    radius: zone.radius,
+                    color: '#00d4ff',
+                    fillColor: '#00d4ff',
+                    fillOpacity: 0.1,
+                    weight: 2,
+                    dashArray: '6 4'
+                }).addTo(driverMap);
+            }
+            if (myLat && myLng) checkZoneProximity(myLat, myLng);
+        }
+
+        function clearZoneHUD() {
+            currentZone = null;
+            if (zoneCircle && driverMap) {
+                driverMap.removeLayer(zoneCircle);
+                zoneCircle = null;
+            }
+            document.getElementById('zone-alert').classList.remove('visible');
         }
 
         function checkZoneProximity(lat, lng) {
@@ -451,36 +661,123 @@
                 return;
             }
 
-            const dist = haversineDistance(lat, lng, currentZone.lat, currentZone.lng);
+            const dist = Math.round(haversineDistance(lat, lng, currentZone.lat, currentZone.lng));
             const alertEl = document.getElementById('zone-alert');
 
             if (dist <= currentZone.radius) {
                 alertEl.classList.add('visible');
-                const lanes = { bike: 'Lane 1 (Bikes)', car: 'Lane 2 (Cars)', van: 'Lane 3 (Vans)', truck: 'Lane 4 (Trucks)' };
-                document.getElementById('lane-assignment').textContent = '→ ' + (lanes[selectedType] || 'Unknown');
+                const targetLane = LANE_MAP[selectedType] || LANE_MAP.car;
+                document.getElementById('lane-assignment').textContent = `→ ${targetLane.name}`;
+                document.getElementById('zone-distance-hint').textContent = `Distance to Checkpoint: ${dist}m (Approaching within 30s window)`;
             } else {
                 alertEl.classList.remove('visible');
             }
+        }
+
+        // ---- Other Vehicle Tracking on Driver Mini-Map ----
+        function updateOtherVehicle(id, data) {
+            if (!data || data.lat === null || data.lat === undefined) return;
+
+            let entry = otherVehicles.get(id);
+            if (!entry) {
+                const marker = L.marker([data.lat, data.lng], {
+                    icon: createDriverVehicleIcon(data.type, false),
+                    zIndexOffset: 500
+                }).addTo(driverMap).bindPopup(`<strong>${data.name || 'Vehicle'}</strong><br>${LANE_MAP[data.type]?.name || 'Matching Lane'}`);
+
+                otherVehicles.set(id, { data, marker });
+            } else {
+                entry.data = data;
+                entry.marker.setLatLng([data.lat, data.lng]);
+            }
+
+            updateRadarCount();
+            renderNearbyList();
+        }
+
+        function removeOtherVehicle(id) {
+            const entry = otherVehicles.get(id);
+            if (entry && entry.marker && driverMap.hasLayer(entry.marker)) {
+                driverMap.removeLayer(entry.marker);
+            }
+            otherVehicles.delete(id);
+            updateRadarCount();
+            renderNearbyList();
+        }
+
+        function updateRadarCount() {
+            document.getElementById('radar-count').textContent = `${otherVehicles.size} vehicle(s) in view`;
+        }
+
+        // ---- Render Nearby Vehicles & Lane Choices ----
+        function renderNearbyList() {
+            const listEl = document.getElementById('nearby-list');
+            if (!sharing) {
+                listEl.innerHTML = '<div class="nearby-empty">Turn on location sharing to view nearby vehicles</div>';
+                return;
+            }
+
+            const items = [];
+
+            // Add self
+            const myInfo = LANE_MAP[selectedType] || LANE_MAP.car;
+            items.push(`
+                <div class="nearby-item self lane-${myInfo.lane}">
+                    <div class="nearby-left">
+                        <span class="nearby-emoji">${myInfo.emoji}</span>
+                        <div>
+                            <div class="nearby-name">You (${document.getElementById('driver-name').value || 'My Vehicle'})</div>
+                            <div class="nearby-lane">Allocated: ${myInfo.name}</div>
+                        </div>
+                    </div>
+                    <span class="nearby-dist">YOU</span>
+                </div>
+            `);
+
+            // Add other drivers
+            otherVehicles.forEach((entry) => {
+                const v = entry.data;
+                const vInfo = LANE_MAP[v.type] || LANE_MAP.car;
+                let distStr = '--';
+                if (myLat && myLng && v.lat && v.lng) {
+                    const d = Math.round(haversineDistance(myLat, myLng, v.lat, v.lng));
+                    distStr = d < 1000 ? `${d}m away` : `${(d / 1000).toFixed(1)}km away`;
+                }
+
+                items.push(`
+                    <div class="nearby-item lane-${vInfo.lane}">
+                        <div class="nearby-left">
+                            <span class="nearby-emoji">${vInfo.emoji}</span>
+                            <div>
+                                <div class="nearby-name">${v.name || 'Driver'}</div>
+                                <div class="nearby-lane">Allocated: ${vInfo.name}</div>
+                            </div>
+                        </div>
+                        <span class="nearby-dist">${distStr}</span>
+                    </div>
+                `);
+            });
+
+            listEl.innerHTML = items.join('');
         }
 
         function haversineDistance(lat1, lng1, lat2, lng2) {
             const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLng = (lng2 - lng1) * Math.PI / 180;
-            const a = Math.sin(dLat/2)**2 +
-                      Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
-                      Math.sin(dLng/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const a = Math.sin(dLat / 2) ** 2 +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
-        // Clean up when page is closed
+        // Clean up on exit
         window.addEventListener('beforeunload', () => {
             if (driverMode === 'firebase' && firebaseDB && driverId) {
                 firebaseDB.ref('vehicles/' + driverId).remove();
             }
         });
 
-        // Init on load
         window.addEventListener('DOMContentLoaded', initDriver);
     </script>
 </body>

@@ -51,11 +51,16 @@ io.on('connection', (socket) => {
             drivers.set(socket.id, driver);
             console.log(`🚗 Driver registered: ${driver.name} (${driver.type})`);
 
-            // Notify all dashboards
+            // Notify all dashboards and other drivers
             io.emit('vehicle:joined', driver);
 
-            // Send driver their ID
+            // Send driver their ID and existing active drivers
             socket.emit('driver:registered', { id: socket.id });
+            const activeDrivers = [];
+            drivers.forEach((d) => {
+                if (d.id !== socket.id && d.lat !== null) activeDrivers.push(d);
+            });
+            socket.emit('vehicles:all', activeDrivers);
         });
 
         // Driver sends GPS update
