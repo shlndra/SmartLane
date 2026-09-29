@@ -1,6 +1,6 @@
 /* ============================================
    SmartLane — Live Road Mode
-   REAL vehicles only — GPS via WebSocket
+   Dual-mode: Socket.io (local) / Firebase (Vercel)
    ============================================ */
 
 // ---- State ----
@@ -16,12 +16,11 @@ let gpsWatchId = null;
 let userLat = null;
 let userLng = null;
 
-// Socket connection to server
 let dashSocket = null;
+let firebaseDB = null;
+let connectionMode = null; // 'socket' or 'firebase'
 
-// Real connected drivers: socketId -> vehicle data
 let realVehicles = new Map();
-
 let liveStats = { total: 0, detected: 0, sorted: 0, passed: 0 };
 let liveTypeCounts = { bike: 0, car: 0, van: 0, truck: 0 };
 
@@ -58,6 +57,21 @@ function createVehicleIcon(type, detected) {
     });
 }
 
+// ---- Detect Connection Mode ----
+function detectMode() {
+    if (typeof io !== 'undefined') {
+        connectionMode = 'socket';
+        console.log('🔌 Using Socket.io (local server)');
+    } else if (typeof firebase !== 'undefined' && typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== 'YOUR_API_KEY') {
+        connectionMode = 'firebase';
+        console.log('🔥 Using Firebase (Vercel deployment)');
+    } else {
+        connectionMode = null;
+        console.warn('⚠️ No real-time backend available. Configure Firebase or run the local server.');
+    }
+    return connectionMode;
+}
+
 // ---- Initialize Live Mode ----
 function initLiveMode() {
     if (liveInitialized) {
@@ -69,32 +83,28 @@ function initLiveMode() {
     const defaultLat = 20.5937;
     const defaultLng = 78.9629;
 
-    map = L.map('map', {
-        zoomControl: true,
-        attributionControl: true,
-    }).setView([defaultLat, defaultLng], 15);
+    map = L.map('map', { zoomControl: true, attributionControl: true }).setView([defaultLat, defaultLng], 15);
 
-    // Free OpenStreetMap tiles — no API key
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19,
     }).addTo(map);
 
-    // Dark theme via CSS filter
     map.getPane('tilePane').style.filter = 'invert(1) hue-rotate(180deg) brightness(0.8) contrast(1.2)';
-
     setTimeout(() => map.invalidateSize(), 200);
 
-    // Click map to place zone
     map.on('click', (e) => placeZone(e.latlng.lat, e.latlng.lng));
 
-    // Start GPS for dashboard user
     startGPS();
 
-    // Connect to server for real vehicle data
-    connectDashboardSocket();
+    // Connect to real-time backend
+    const mode = detectMode();
+    if (mode === 'socket') {
+        connectSocket();
+    } else if (mode === 'firebase') {
+        connectFirebase();
+    }
 
-    // Update detection every second
     setInterval(updateLiveDetection, 1000);
 
     // Show driver link
@@ -102,51 +112,80 @@ function initLiveMode() {
     document.getElementById('driver-link').textContent = driverLink;
 }
 
-// ---- WebSocket — Connect to Server ----
-function connectDashboardSocket() {
-    if (typeof io === 'undefined') {
-        console.warn('Socket.io not loaded — start the server with: node server.js');
-        return;
-    }
-
+// ============================================
+//  MODE 1: SOCKET.IO (Local Development)
+// ============================================
+function connectSocket() {
     dashSocket = io(window.location.origin, { query: { role: 'dashboard' } });
 
-    dashSocket.on('connect', () => {
-        console.log('📊 Dashboard connected to server');
-    });
+    dashSocket.on('connect', () => console.log('📊 Dashboard connected via Socket.io'));
 
-    // Receive all existing drivers when dashboard connects
     dashSocket.on('vehicles:all', (vehicles) => {
-        vehicles.forEach(v => addRealVehicle(v));
+        vehicles.forEach(v => addRealVehicle(v.id, v));
         updateConnectedCount();
     });
 
-    // A new driver opened the app and registered
     dashSocket.on('vehicle:joined', (data) => {
-        addRealVehicle(data);
+        addRealVehicle(data.id, data);
         updateConnectedCount();
     });
 
-    // Driver's GPS position updated
     dashSocket.on('vehicle:update', (data) => {
-        updateRealVehicle(data);
+        updateRealVehicle(data.id, data);
     });
 
-    // Driver closed the app / disconnected
     dashSocket.on('vehicle:left', (data) => {
         removeRealVehicle(data.id);
         updateConnectedCount();
     });
 }
 
-// ---- Real Vehicle Management ----
-function addRealVehicle(data) {
-    if (realVehicles.has(data.id)) return;
+// ============================================
+//  MODE 2: FIREBASE (Vercel Deployment)
+// ============================================
+function connectFirebase() {
+    firebase.initializeApp(firebaseConfig);
+    firebaseDB = firebase.database();
+
+    const vehiclesRef = firebaseDB.ref('vehicles');
+
+    // Listen for drivers joining / updating GPS
+    vehiclesRef.on('child_added', (snap) => {
+        const data = snap.val();
+        if (data) addRealVehicle(snap.key, data);
+        updateConnectedCount();
+    });
+
+    vehiclesRef.on('child_changed', (snap) => {
+        const data = snap.val();
+        if (data) updateRealVehicle(snap.key, data);
+    });
+
+    vehiclesRef.on('child_removed', (snap) => {
+        removeRealVehicle(snap.key);
+        updateConnectedCount();
+    });
+
+    // Load existing zone
+    firebaseDB.ref('zone').on('value', (snap) => {
+        const data = snap.val();
+        if (data && data.lat) {
+            // Zone was set by another dashboard
+            // Don't override if we already have one
+        }
+    });
+}
+
+// ============================================
+//  Vehicle Management (shared for both modes)
+// ============================================
+function addRealVehicle(id, data) {
+    if (realVehicles.has(id)) return;
 
     const info = LIVE_VEHICLE_TYPES[data.type] || LIVE_VEHICLE_TYPES.car;
 
     const vehicle = {
-        id: data.id,
+        id: id,
         type: data.type,
         name: data.name || 'Driver',
         lat: data.lat,
@@ -157,7 +196,6 @@ function addRealVehicle(data) {
         eta: null,
     };
 
-    // Create marker on map if we have coordinates
     if (data.lat !== null && data.lat !== undefined) {
         vehicle.marker = L.marker([data.lat, data.lng], {
             icon: createVehicleIcon(data.type, false),
@@ -166,31 +204,31 @@ function addRealVehicle(data) {
           .bindPopup(`${info.emoji} <strong>${vehicle.name}</strong><br>Type: ${info.label} | Lane ${info.lane}`);
     }
 
-    realVehicles.set(data.id, vehicle);
+    realVehicles.set(id, vehicle);
     liveTypeCounts[data.type] = (liveTypeCounts[data.type] || 0) + 1;
     liveStats.total++;
     updateLiveDashboard();
 }
 
-function updateRealVehicle(data) {
-    let vehicle = realVehicles.get(data.id);
+function updateRealVehicle(id, data) {
+    let vehicle = realVehicles.get(id);
 
     if (!vehicle) {
-        addRealVehicle(data);
-        vehicle = realVehicles.get(data.id);
+        addRealVehicle(id, data);
+        vehicle = realVehicles.get(id);
         if (!vehicle) return;
     }
 
     vehicle.lat = data.lat;
     vehicle.lng = data.lng;
     vehicle.speed = data.speed || 0;
+    if (data.name) vehicle.name = data.name;
 
     const info = LIVE_VEHICLE_TYPES[data.type] || LIVE_VEHICLE_TYPES.car;
 
-    // Update or create marker
     if (vehicle.marker) {
         vehicle.marker.setLatLng([data.lat, data.lng]);
-    } else {
+    } else if (data.lat !== null) {
         vehicle.marker = L.marker([data.lat, data.lng], {
             icon: createVehicleIcon(data.type, vehicle.detected),
             zIndexOffset: 500,
@@ -205,12 +243,7 @@ function removeRealVehicle(id) {
     const vehicle = realVehicles.get(id);
     if (!vehicle) return;
 
-    // Remove marker from map
-    if (vehicle.marker && map.hasLayer(vehicle.marker)) {
-        map.removeLayer(vehicle.marker);
-    }
-
-    // Update counts
+    if (vehicle.marker && map.hasLayer(vehicle.marker)) map.removeLayer(vehicle.marker);
     if (liveTypeCounts[vehicle.type] > 0) liveTypeCounts[vehicle.type]--;
     liveStats.passed++;
 
@@ -223,7 +256,6 @@ function updateLiveDetection() {
     if (zoneLat === null) return;
 
     let detectedCount = 0;
-
     realVehicles.forEach((vehicle) => {
         if (!vehicle.lat) return;
 
@@ -231,23 +263,16 @@ function updateLiveDetection() {
         const wasDetected = vehicle.detected;
 
         if (dist <= zoneRadius) {
-            // Vehicle is inside detection zone
             vehicle.detected = true;
             detectedCount++;
+            vehicle.eta = vehicle.speed > 0
+                ? Math.max(0, Math.round(dist / (vehicle.speed / 3.6)))
+                : Math.round(dist / 10);
 
-            // Calculate ETA
-            if (vehicle.speed > 0) {
-                vehicle.eta = Math.max(0, Math.round(dist / (vehicle.speed / 3.6)));
-            } else {
-                vehicle.eta = Math.round(dist / 10); // estimate
-            }
-
-            // Update icon to "detected" style
             if (!wasDetected && vehicle.marker) {
                 vehicle.marker.setIcon(createVehicleIcon(vehicle.type, true));
             }
         } else {
-            // Vehicle is outside detection zone
             vehicle.detected = false;
             vehicle.eta = null;
             if (wasDetected && vehicle.marker) {
@@ -270,7 +295,7 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ---- GPS for Dashboard User ----
+// ---- GPS for Dashboard ----
 function startGPS() {
     const statusEl = document.getElementById('gps-status');
     const coordsEl = document.getElementById('gps-coords');
@@ -284,7 +309,6 @@ function startGPS() {
     }
 
     statusEl.textContent = '📡 Acquiring GPS...';
-
     gpsWatchId = navigator.geolocation.watchPosition(
         (pos) => {
             userLat = pos.coords.latitude;
@@ -311,19 +335,11 @@ function onGPSPosition(lat, lng) {
     } else {
         const userIcon = L.divIcon({
             className: 'user-marker',
-            html: `<div style="
-                width:18px; height:18px;
-                background:#00d4ff;
-                border:3px solid #fff;
-                border-radius:50%;
-                box-shadow:0 0 15px rgba(0,212,255,0.6);
-            "></div>`,
-            iconSize: [18, 18],
-            iconAnchor: [9, 9],
+            html: `<div style="width:18px;height:18px;background:#00d4ff;border:3px solid #fff;border-radius:50%;box-shadow:0 0 15px rgba(0,212,255,0.6);"></div>`,
+            iconSize: [18, 18], iconAnchor: [9, 9],
         });
         userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 })
-            .addTo(map)
-            .bindPopup('📍 You (Dashboard)');
+            .addTo(map).bindPopup('📍 You (Dashboard)');
         map.setView([lat, lng], 16);
     }
 }
@@ -338,16 +354,8 @@ function placeZone(lat, lng) {
 
     const zoneIcon = L.divIcon({
         className: 'zone-marker',
-        html: `<div style="
-            width:28px; height:28px;
-            background:#4caf50; border:3px solid #fff;
-            border-radius:4px;
-            display:flex; align-items:center; justify-content:center;
-            font-size:14px;
-            box-shadow:0 0 15px rgba(76,175,80,0.5);
-        ">🏁</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
+        html: `<div style="width:28px;height:28px;background:#4caf50;border:3px solid #fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 15px rgba(76,175,80,0.5);">🏁</div>`,
+        iconSize: [28, 28], iconAnchor: [14, 14],
     });
 
     zoneMarker = L.marker([lat, lng], { icon: zoneIcon, zIndexOffset: 900 })
@@ -356,26 +364,28 @@ function placeZone(lat, lng) {
         .openPopup();
 
     zoneCircle = L.circle([lat, lng], {
-        radius: zoneRadius,
-        color: '#00d4ff',
-        fillColor: '#00d4ff',
-        fillOpacity: 0.08,
-        weight: 2,
-        dashArray: '8 6',
+        radius: zoneRadius, color: '#00d4ff', fillColor: '#00d4ff',
+        fillOpacity: 0.08, weight: 2, dashArray: '8 6',
     }).addTo(map);
 
     map.fitBounds(zoneCircle.getBounds().pad(0.3));
 
-    // Tell server so drivers know about the zone
-    if (dashSocket) dashSocket.emit('zone:set', { lat, lng, radius: zoneRadius });
+    // Notify backend
+    if (connectionMode === 'socket' && dashSocket) {
+        dashSocket.emit('zone:set', { lat, lng, radius: zoneRadius });
+    } else if (connectionMode === 'firebase' && firebaseDB) {
+        firebaseDB.ref('zone').set({ lat, lng, radius: zoneRadius });
+    }
 }
 
 function liveRemoveZone() {
     if (zoneMarker) { map.removeLayer(zoneMarker); zoneMarker = null; }
     if (zoneCircle) { map.removeLayer(zoneCircle); zoneCircle = null; }
-    zoneLat = null;
-    zoneLng = null;
-    if (dashSocket) dashSocket.emit('zone:remove');
+    zoneLat = null; zoneLng = null;
+
+    if (connectionMode === 'socket' && dashSocket) dashSocket.emit('zone:remove');
+    else if (connectionMode === 'firebase' && firebaseDB) firebaseDB.ref('zone').remove();
+
     updateLiveDashboard();
 }
 
@@ -386,8 +396,9 @@ function liveUpdateRadius(val) {
         zoneCircle.setRadius(zoneRadius);
         map.fitBounds(zoneCircle.getBounds().pad(0.3));
     }
-    if (dashSocket && zoneLat !== null) {
-        dashSocket.emit('zone:set', { lat: zoneLat, lng: zoneLng, radius: zoneRadius });
+    if (zoneLat !== null) {
+        if (connectionMode === 'socket' && dashSocket) dashSocket.emit('zone:set', { lat: zoneLat, lng: zoneLng, radius: zoneRadius });
+        else if (connectionMode === 'firebase' && firebaseDB) firebaseDB.ref('zone').set({ lat: zoneLat, lng: zoneLng, radius: zoneRadius });
     }
 }
 
@@ -402,9 +413,7 @@ function copyDriverLink() {
         const btn = event.target;
         btn.textContent = '✅ Copied!';
         setTimeout(() => { btn.textContent = '📋 Copy Driver Link'; }, 2000);
-    }).catch(() => {
-        prompt('Copy this link:', link);
-    });
+    }).catch(() => prompt('Copy this link:', link));
 }
 
 // ---- Connected Count ----
@@ -412,9 +421,7 @@ function updateConnectedCount() {
     const count = realVehicles.size;
     const el = document.getElementById('connected-count');
     if (el) {
-        el.textContent = count === 0
-            ? '⏳ Waiting for drivers...'
-            : `✅ ${count} driver${count > 1 ? 's' : ''} connected`;
+        el.textContent = count === 0 ? '⏳ Waiting for drivers...' : `✅ ${count} driver${count > 1 ? 's' : ''} connected`;
         el.style.color = count > 0 ? '#4caf50' : '#ffd600';
     }
 }
@@ -432,17 +439,13 @@ function updateLiveDashboard() {
     document.getElementById('live-count-truck').textContent = liveTypeCounts.truck;
 
     const listEl = document.getElementById('live-vehicle-list');
-
-    // Collect detected vehicles
     const approaching = [];
-    realVehicles.forEach(v => {
-        if (v.detected) approaching.push(v);
-    });
+    realVehicles.forEach(v => { if (v.detected) approaching.push(v); });
 
     if (zoneLat === null) {
-        listEl.innerHTML = '<p class="empty-msg">📌 Click on the map to place a detection zone first</p>';
+        listEl.innerHTML = '<p class="empty-msg">📌 Click on the map to place a detection zone</p>';
     } else if (realVehicles.size === 0) {
-        listEl.innerHTML = `<p class="empty-msg">📱 No drivers connected yet<br><br>Share the driver link with people on the road to see their real location here</p>`;
+        listEl.innerHTML = `<p class="empty-msg">📱 No drivers connected<br><br>Share the driver link to see real vehicles here</p>`;
     } else if (approaching.length === 0) {
         listEl.innerHTML = `<p class="empty-msg">✅ ${realVehicles.size} driver(s) online<br>None in detection range yet</p>`;
     } else {
@@ -461,6 +464,5 @@ function updateLiveDashboard() {
                 </div>`;
             }).join('');
     }
-
     updateConnectedCount();
 }
