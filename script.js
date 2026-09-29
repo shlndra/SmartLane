@@ -52,10 +52,25 @@ const CONFIG = {
 };
 
 const VEHICLE_TYPES = {
-    bike:  { emoji: '🏍️', label: 'Bike',  lane: 0, color: '#2e7d32' },
-    car:   { emoji: '🚗', label: 'Car',   lane: 1, color: '#1565c0' },
-    van:   { emoji: '🚐', label: 'Van',   lane: 2, color: '#e65100' },
-    truck: { emoji: '🚛', label: 'Truck', lane: 3, color: '#b71c1c' },
+    // Lane 1 — Small
+    bike:      { emoji: '🏍️', label: 'Bike',       lane: 0, color: '#2e7d32' },
+    scooty:    { emoji: '🛵', label: 'Scooty',     lane: 0, color: '#2e7d32' },
+    cycle:     { emoji: '🚲', label: 'Bicycle',    lane: 0, color: '#2e7d32' },
+
+    // Lane 2 — Medium
+    car:       { emoji: '🚗', label: 'Car',        lane: 1, color: '#1565c0' },
+    auto:      { emoji: '🛺', label: 'Auto',       lane: 1, color: '#1565c0' },
+    taxi:      { emoji: '🚕', label: 'Taxi',       lane: 1, color: '#1565c0' },
+
+    // Lane 3 — Large
+    van:       { emoji: '🚐', label: 'Van/Tempo',  lane: 2, color: '#e65100' },
+    ambulance: { emoji: '🚑', label: 'Ambulance',  lane: 2, color: '#e65100' },
+    pickup:    { emoji: '🛻', label: 'Pickup',     lane: 2, color: '#e65100' },
+
+    // Lane 4 — Heavy
+    truck:     { emoji: '🚛', label: 'Truck',      lane: 3, color: '#b71c1c' },
+    bus:       { emoji: '🚌', label: 'Bus',        lane: 3, color: '#b71c1c' },
+    tractor:   { emoji: '🚜', label: 'Tractor',    lane: 3, color: '#b71c1c' },
 };
 
 const TYPE_KEYS = Object.keys(VEHICLE_TYPES);
@@ -71,6 +86,22 @@ let typeCounts = { bike: 0, car: 0, van: 0, truck: 0 };
 const roadEl = document.getElementById('road');
 const vehicleListEl = document.getElementById('vehicle-list');
 
+// Vehicle speeds by type (Bikes/Cars faster, Trucks slower)
+const VEHICLE_SPEED_FACTORS = {
+    cycle: 0.9,
+    bike: 1.35,
+    scooty: 1.1,
+    car: 1.25,
+    taxi: 1.2,
+    auto: 1.05,
+    ambulance: 1.45,
+    van: 1.0,
+    pickup: 1.05,
+    bus: 0.85,
+    truck: 0.75,
+    tractor: 0.65
+};
+
 // ---- Vehicle Class ----
 class Vehicle {
     constructor(type) {
@@ -79,16 +110,22 @@ class Vehicle {
         this.info = VEHICLE_TYPES[type];
         this.roadWidth = roadEl.clientWidth;
         this.roadHeight = roadEl.clientHeight;
-        this.x = Math.random() * (this.roadWidth - 50) + 5;
-        this.y = this.roadHeight + 10;
+        
+        // Spawn across road randomly
+        this.x = Math.random() * (this.roadWidth - 55) + 10;
+        this.y = this.roadHeight + 20 + Math.random() * 40;
+        this.vx = 0;
+        this.vy = 0;
+        this.rotation = 0;
 
         const laneWidth = this.roadWidth / 4;
-        this.targetX = this.info.lane * laneWidth + (laneWidth / 2) - 20;
+        this.targetX = this.info.lane * laneWidth + (laneWidth / 2) - 19;
 
         this.detected = false;
         this.sorted = false;
         this.passed = false;
         this.eta = null;
+        this.speedFactor = VEHICLE_SPEED_FACTORS[type] || 1.0;
         this.detectionY = this.roadHeight * CONFIG.detectionLinePercent;
         this.sortedY = this.roadHeight * CONFIG.sortedZonePercent;
 
@@ -102,54 +139,97 @@ class Vehicle {
     createElement() {
         const el = document.createElement('div');
         el.className = `vehicle type-${this.type}`;
-        el.innerHTML = `<span>${this.info.emoji}</span><span class="v-eta"></span>`;
+        el.innerHTML = `<span>${this.info.emoji}</span><span class="v-tag"></span>`;
         el.style.left = this.x + 'px';
         el.style.top = this.y + 'px';
         el.title = `${this.info.label} #${this.id}`;
         return el;
     }
 
-    update() {
+    update(allVehicles) {
         if (this.passed) return;
 
-        const speed = CONFIG.baseSpeed * CONFIG.speedMultiplier;
-        this.y -= speed;
+        // Base speed with individual vehicle variation
+        let currentSpeed = CONFIG.baseSpeed * CONFIG.speedMultiplier * this.speedFactor;
 
+        // Collision avoidance: check vehicle directly ahead in same lane / close proximity
+        for (let other of allVehicles) {
+            if (other.id !== this.id && !other.passed) {
+                const dy = this.y - other.y;
+                const dx = Math.abs(this.x - other.x);
+                if (dy > 0 && dy < 65 && dx < 28) {
+                    // Slow down to match car ahead
+                    currentSpeed = Math.min(currentSpeed, other.vy * 0.9);
+                }
+            }
+        }
+
+        this.vy = currentSpeed;
+        this.y -= this.vy;
+
+        // GPS Detection Trigger
         if (!this.detected && this.y <= this.detectionY) {
             this.detected = true;
             this.element.classList.add('detected');
             stats.detected++;
-            this.element.style.left = this.targetX + 'px';
         }
 
+        // Realistic lane change steering physics
         if (this.detected && !this.sorted) {
+            const dx = this.targetX - this.x;
+            
+            // Turn indicator activation & banking rotation
+            if (Math.abs(dx) > 3) {
+                const steerSpeed = Math.min(Math.abs(dx) * 0.05, 2.8) * Math.sign(dx);
+                this.x += steerSpeed;
+                this.rotation = steerSpeed * 4.5; // realistic steering angle
+                
+                if (steerSpeed < 0) {
+                    this.element.classList.add('indicating-left');
+                    this.element.classList.remove('indicating-right');
+                } else {
+                    this.element.classList.add('indicating-right');
+                    this.element.classList.remove('indicating-left');
+                }
+            } else {
+                this.x = this.targetX;
+                this.rotation = 0;
+                this.element.classList.remove('indicating-left', 'indicating-right');
+            }
+
             const pixelsToZone = this.y - this.sortedY;
-            const pixelsPerSecond = speed * 60;
+            const pixelsPerSecond = Math.max(1, this.vy) * 60;
             this.eta = Math.max(0, Math.round(pixelsToZone / pixelsPerSecond));
-            this.element.querySelector('.v-eta').textContent = this.eta + 's';
+            this.element.querySelector('.v-tag').textContent = this.eta + 's';
         }
 
-        if (!this.sorted && this.y <= this.sortedY + 40) {
+        // Fully sorted into designated lane
+        if (!this.sorted && this.y <= this.sortedY + 20 && Math.abs(this.x - this.targetX) < 8) {
             this.sorted = true;
-            this.element.classList.remove('detected');
+            this.rotation = 0;
+            this.element.classList.remove('detected', 'indicating-left', 'indicating-right');
             this.element.classList.add('sorted');
-            this.element.querySelector('.v-eta').textContent = '✓';
+            this.element.querySelector('.v-tag').textContent = 'L' + (this.info.lane + 1);
             stats.sorted++;
         }
 
-        if (this.y < -60) {
+        // Passed through toll checkpoint
+        if (this.y < -80) {
             this.passed = true;
             stats.passed++;
             this.element.remove();
         }
 
+        // Apply smooth 2D transformations (position + steering rotation)
+        this.element.style.left = this.x + 'px';
         this.element.style.top = this.y + 'px';
+        this.element.style.transform = `rotate(${this.rotation}deg)`;
     }
 }
 
 // ---- Game Loop ----
 function gameLoop() {
-    vehicles.forEach(v => v.update());
+    vehicles.forEach(v => v.update(vehicles));
     vehicles = vehicles.filter(v => !v.passed);
     updateDemoDashboard();
     animFrameId = requestAnimationFrame(gameLoop);

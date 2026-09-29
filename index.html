@@ -133,12 +133,17 @@
                         <input type="range" id="speed-slider" min="1" max="5" value="2" oninput="updateSpeed(this.value)">
                         <span id="speed-label">2x</span>
                     </div>
-                    <p class="control-hint">Or add manually:</p>
-                    <div class="control-row add-buttons">
-                        <button class="btn btn-add bike-bg" onclick="addVehicle('bike')">+ 🏍️</button>
-                        <button class="btn btn-add car-bg" onclick="addVehicle('car')">+ 🚗</button>
-                        <button class="btn btn-add van-bg" onclick="addVehicle('van')">+ 🚐</button>
-                        <button class="btn btn-add truck-bg" onclick="addVehicle('truck')">+ 🚛</button>
+                    <p class="control-hint">Or spawn specific vehicle:</p>
+                    <div class="control-row add-buttons" style="flex-wrap:wrap;gap:4px;">
+                        <button class="btn btn-add bike-bg" onclick="addVehicle('bike')" title="Bike">+ 🏍️</button>
+                        <button class="btn btn-add bike-bg" onclick="addVehicle('scooty')" title="Scooty">+ 🛵</button>
+                        <button class="btn btn-add car-bg" onclick="addVehicle('car')" title="Car">+ 🚗</button>
+                        <button class="btn btn-add car-bg" onclick="addVehicle('auto')" title="Auto Rickshaw">+ 🛺</button>
+                        <button class="btn btn-add van-bg" onclick="addVehicle('ambulance')" title="Ambulance">+ 🚑</button>
+                        <button class="btn btn-add van-bg" onclick="addVehicle('van')" title="Van">+ 🚐</button>
+                        <button class="btn btn-add truck-bg" onclick="addVehicle('bus')" title="Bus">+ 🚌</button>
+                        <button class="btn btn-add truck-bg" onclick="addVehicle('truck')" title="Truck">+ 🚛</button>
+                        <button class="btn btn-add truck-bg" onclick="addVehicle('tractor')" title="Tractor">+ 🚜</button>
                     </div>
                 </div>
             </div>
